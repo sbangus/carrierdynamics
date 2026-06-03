@@ -1,0 +1,74 @@
+#
+# Macro file for stacked detector geometry
+# 4 detectors: 1 thermal (B4C-loaded) + 3 fast
+# Even split of 0.025 eV, 1 MeV, and 14 MeV neutrons
+#
+/control/verbose 1
+/run/verbose 1
+#
+/testhadr/det/setNbOfLayers 1
+/testhadr/det/setNbOfAbsor 8
+#
+# Detector 1: thermal (B4C-loaded)
+/testhadr/det/setAbsor 1 G4_Ag 40 nm
+/testhadr/det/setAbsor 2 PNDI-T10-B4C 75 um
+/testhadr/det/setAbsor 3 ITO 100 nm
+/testhadr/det/setAbsor 4 QuartzGlass 100 um
+#
+# Detector 2: fast
+/testhadr/det/setAbsor 5 G4_Ag 40 nm
+/testhadr/det/setAbsor 6 PNDI-T10 75 um
+/testhadr/det/setAbsor 7 ITO 100 nm
+/testhadr/det/setAbsor 8 QuartzGlass 100 um
+#
+# Detector 3: fast
+#/testhadr/det/setAbsor 9 G4_Ag 40 nm
+#/testhadr/det/setAbsor 10 PNDI-T10 75 um
+#/testhadr/det/setAbsor 11 ITO 100 nm
+#/testhadr/det/setAbsor 12 QuartzGlass 100 um
+#
+# Detector 4: fast
+#/testhadr/det/setAbsor 13 G4_Ag 40 nm
+#/testhadr/det/setAbsor 14 PNDI-T10 75 um
+#/testhadr/det/setAbsor 15 ITO 100 nm
+#/testhadr/det/setAbsor 16 QuartzGlass 100 um
+#
+/testhadr/det/setSizeYZ 1 mm
+#
+/run/initialize
+#
+# Visualization
+#/vis/open
+#/vis/viewer/set/autoRefresh false
+#/vis/verbose errors
+#/vis/drawVolume
+#/vis/viewer/zoom 1.2
+#/vis/scene/add/trajectories smooth
+#/vis/modeling/trajectories/create/drawByCharge
+#/vis/scene/endOfEventAction accumulate
+#/vis/viewer/set/autoRefresh true
+#/vis/verbose warnings
+#
+# Three neutron sources with equal intensity: thermal, 1 MeV, 14 MeV
+# Position is set automatically by GeneratePrimaries() to match geometry.
+#
+# Source 1: 0.025 eV
+/gps/source/intensity 1.0
+/gps/particle neutron
+/gps/energy 0.025 eV
+/gps/direction 1 0 0
+#
+# Source 2: 2.2 MeV
+/gps/source/add 1.0
+/gps/particle neutron
+/gps/energy 2.2 MeV
+/gps/direction 1 0 0
+#
+# Source 3: 14 MeV
+/gps/source/add 1.0
+/gps/particle neutron
+/gps/energy 14 MeV
+/gps/direction 1 0 0
+#
+#/run/printProgress 1000
+/run/beamOn 100000

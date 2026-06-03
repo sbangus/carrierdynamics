@@ -1,0 +1,80 @@
+#
+# Same geometry and GPS as shine-box-spectrum.mac, with visualization and no end-of-file /run/beamOn.
+#
+# Interactive workflow (single-threaded for vis):
+#   cd build
+#   ./Hadr05
+#   idle> /control/execute shine-box-spectrum-vis.mac
+#   idle> /run/beamOn 100
+#
+# Ensure neutron_frontface_gps.dat exists in cwd:
+#   awk '!/^#/ && NF>=2 {printf "%.17g %.17g\n", $1/1e6, $2}' neutron_frontface_gps.txt > neutron_frontface_gps.dat
+#
+/control/verbose 1
+/run/verbose 1
+#
+/testhadr/det/setNbOfLayers 1
+/testhadr/det/setNbOfAbsor 4
+/testhadr/det/setAbsor 1 G4_Ag        40 nm
+/testhadr/det/setAbsor 2 PNDI-T10     75 um
+/testhadr/det/setAbsor 3 ITO         100 nm
+/testhadr/det/setAbsor 4 QuartzGlass 100 um
+/testhadr/det/setSizeYZ 15 mm
+#
+# No bud box: calorimeter sits in world; front Z = half total absorber depth.
+/testhadr/det/setBoxWallThickness 0 mm
+/testhadr/det/setCavityMaterial G4_AIR
+/testhadr/det/setWorldMaterial G4_AIR
+/testhadr/det/setLabSize 2000 2000 2000 mm
+#
+/testhadr/det/setEncasementEnable false
+/testhadr/det/setModeratorEnable false
+#
+/run/numberOfThreads 1
+/run/initialize
+#
+/gps/particle neutron
+/gps/ene/type Arb
+/gps/hist/type arb
+/gps/hist/file neutron_frontface_gps.dat
+/gps/hist/inter Lin
+#
+# Plane matches calorimeter transverse size (15 mm full -> 7.5 mm half-edge).
+# z = frontZ + 1 nm + 0.25 um with frontZ = (40 nm + 75 um + 100 nm + 100 um) / 2
+/gps/pos/type Plane
+/gps/pos/shape Rectangle
+/gps/pos/halfx 7.5 mm
+/gps/pos/halfy 7.5 mm
+/gps/pos/centre 0 0 0.1 mm
+#
+/gps/ang/type iso
+/gps/ang/rot1 1 0 0
+/gps/ang/rot2 0 1 0
+/gps/ang/mintheta 0 deg
+/gps/ang/maxtheta 0 deg
+#
+/random/setSeeds 123456784 987654323
+/run/printProgress 10000
+#
+/vis/open
+/vis/viewer/set/autoRefresh false
+/vis/verbose errors
+/vis/drawVolume
+/vis/geometry/set/visibility World 0 false
+/vis/geometry/set/visibility world 0 false
+/vis/viewer/set/style wireframe
+/vis/viewer/set/viewpointThetaPhi 65 35 deg
+/vis/viewer/zoom 2.0
+/vis/scene/add/axes 0 0 0 20 mm
+/vis/scene/add/trajectories smooth
+/vis/modeling/trajectories/create/drawByParticleID
+/vis/modeling/trajectories/drawByParticleID-0/set neutron cyan
+/vis/modeling/trajectories/drawByParticleID-0/set proton red
+/vis/modeling/trajectories/drawByParticleID-0/set gamma yellow
+/vis/modeling/trajectories/drawByParticleID-0/set e- green
+/vis/modeling/trajectories/drawByParticleID-0/set e+ magenta
+/vis/modeling/trajectories/drawByParticleID-0/set alpha orange
+/tracking/storeTrajectory 1
+/vis/scene/endOfEventAction accumulate
+/vis/viewer/set/autoRefresh true
+/vis/verbose warnings

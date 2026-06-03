@@ -1,0 +1,555 @@
+# shine-dd-box geometry with 100 sequential `/run/beamOn` batches (CSV + ROOT per batch).
+# Appends edep_batches.csv after each run when CSV is enabled; `/testhadr/batch/setRotateRootPerRun`
+# + `setRootFileBase` assign distinct ROOT files per run (hadr05_batch0.root, ...).
+#
+/control/verbose 1
+/run/verbose 1
+#
+/testhadr/det/setNbOfLayers 1
+/testhadr/det/setNbOfAbsor 4
+/testhadr/det/setAbsor 1 G4_Ag        40 nm
+/testhadr/det/setAbsor 2 PNDI-T10     75 um
+/testhadr/det/setAbsor 3 ITO         100 nm
+/testhadr/det/setAbsor 4 QuartzGlass 100 um
+/testhadr/det/setSizeYZ 15 mm
+#
+/testhadr/det/setBoxExternal 103 53 25 mm
+/testhadr/det/setBoxWallThickness 1.8 mm
+/testhadr/det/setDetectorStandoff 10 mm
+/testhadr/det/setBoxMaterial G4_Al
+/testhadr/det/setCavityMaterial G4_AIR
+/testhadr/det/setWorldMaterial G4_WATER
+/testhadr/det/setLabSize 2000 2000 2000 mm
+#
+/testhadr/det/setEncasementEnable true
+/testhadr/det/setEncasementOuter 336.3 336.3 183.39 mm
+/testhadr/det/setEncasementWallThickness 4.6 mm
+#
+/testhadr/det/setModeratorGap 0 mm
+/testhadr/det/setSourceStandoff 7.62 mm
+/testhadr/det/setModeratorEnable false
+/testhadr/det/setModeratorMaterial ABS
+#
+/run/initialize
+#
+/gps/particle neutron
+/gps/ene/type Mono
+/gps/ene/mono 2.45 MeV
+#
+/gps/pos/type Plane
+/gps/pos/shape Rectangle
+/gps/pos/halfx 25.75 mm
+/gps/pos/halfy 13.25 mm
+/gps/pos/centre 0 0 17.1 mm
+#
+/gps/ang/type iso
+/gps/ang/rot1 1 0 0
+/gps/ang/rot2 0 1 0
+/gps/ang/mintheta 0 deg
+/gps/ang/maxtheta 60 deg
+#
+/testhadr/run/setBatchSummaryEnable true
+/testhadr/run/setBatchSummaryFile edep_batches.csv
+/testhadr/batch/setRotateRootPerRun true
+/testhadr/batch/setRootFileBase hadr05_batch
+/run/printProgress 100000
+#
+# Batch 0
+/testhadr/run/setBatchTag 00
+/random/setSeeds 123456789 987654321
+/run/beamOn 100000
+
+# Batch 1
+/testhadr/run/setBatchTag 01
+/random/setSeeds 123456790 987654304
+/run/beamOn 100000
+
+# Batch 2
+/testhadr/run/setBatchTag 02
+/random/setSeeds 123456791 987654287
+/run/beamOn 100000
+
+# Batch 3
+/testhadr/run/setBatchTag 03
+/random/setSeeds 123456792 987654270
+/run/beamOn 100000
+
+# Batch 4
+/testhadr/run/setBatchTag 04
+/random/setSeeds 123456793 987654253
+/run/beamOn 100000
+
+# Batch 5
+/testhadr/run/setBatchTag 05
+/random/setSeeds 123456794 987654236
+/run/beamOn 100000
+
+# Batch 6
+/testhadr/run/setBatchTag 06
+/random/setSeeds 123456795 987654219
+/run/beamOn 100000
+
+# Batch 7
+/testhadr/run/setBatchTag 07
+/random/setSeeds 123456796 987654202
+/run/beamOn 100000
+
+# Batch 8
+/testhadr/run/setBatchTag 08
+/random/setSeeds 123456797 987654185
+/run/beamOn 100000
+
+# Batch 9
+/testhadr/run/setBatchTag 09
+/random/setSeeds 123456798 987654168
+/run/beamOn 100000
+
+# Batch 10
+/testhadr/run/setBatchTag 10
+/random/setSeeds 123456799 987654151
+/run/beamOn 100000
+
+# Batch 11
+/testhadr/run/setBatchTag 11
+/random/setSeeds 123456800 987654134
+/run/beamOn 100000
+
+# Batch 12
+/testhadr/run/setBatchTag 12
+/random/setSeeds 123456801 987654117
+/run/beamOn 100000
+
+# Batch 13
+/testhadr/run/setBatchTag 13
+/random/setSeeds 123456802 987654100
+/run/beamOn 100000
+
+# Batch 14
+/testhadr/run/setBatchTag 14
+/random/setSeeds 123456803 987654083
+/run/beamOn 100000
+
+# Batch 15
+/testhadr/run/setBatchTag 15
+/random/setSeeds 123456804 987654066
+/run/beamOn 100000
+
+# Batch 16
+/testhadr/run/setBatchTag 16
+/random/setSeeds 123456805 987654049
+/run/beamOn 100000
+
+# Batch 17
+/testhadr/run/setBatchTag 17
+/random/setSeeds 123456806 987654032
+/run/beamOn 100000
+
+# Batch 18
+/testhadr/run/setBatchTag 18
+/random/setSeeds 123456807 987654015
+/run/beamOn 100000
+
+# Batch 19
+/testhadr/run/setBatchTag 19
+/random/setSeeds 123456808 987653998
+/run/beamOn 100000
+
+# Batch 20
+/testhadr/run/setBatchTag 20
+/random/setSeeds 123456809 987653981
+/run/beamOn 100000
+
+# Batch 21
+/testhadr/run/setBatchTag 21
+/random/setSeeds 123456810 987653964
+/run/beamOn 100000
+
+# Batch 22
+/testhadr/run/setBatchTag 22
+/random/setSeeds 123456811 987653947
+/run/beamOn 100000
+
+# Batch 23
+/testhadr/run/setBatchTag 23
+/random/setSeeds 123456812 987653930
+/run/beamOn 100000
+
+# Batch 24
+/testhadr/run/setBatchTag 24
+/random/setSeeds 123456813 987653913
+/run/beamOn 100000
+
+# Batch 25
+/testhadr/run/setBatchTag 25
+/random/setSeeds 123456814 987653896
+/run/beamOn 100000
+
+# Batch 26
+/testhadr/run/setBatchTag 26
+/random/setSeeds 123456815 987653879
+/run/beamOn 100000
+
+# Batch 27
+/testhadr/run/setBatchTag 27
+/random/setSeeds 123456816 987653862
+/run/beamOn 100000
+
+# Batch 28
+/testhadr/run/setBatchTag 28
+/random/setSeeds 123456817 987653845
+/run/beamOn 100000
+
+# Batch 29
+/testhadr/run/setBatchTag 29
+/random/setSeeds 123456818 987653828
+/run/beamOn 100000
+
+# Batch 30
+/testhadr/run/setBatchTag 30
+/random/setSeeds 123456819 987653811
+/run/beamOn 100000
+
+# Batch 31
+/testhadr/run/setBatchTag 31
+/random/setSeeds 123456820 987653794
+/run/beamOn 100000
+
+# Batch 32
+/testhadr/run/setBatchTag 32
+/random/setSeeds 123456821 987653777
+/run/beamOn 100000
+
+# Batch 33
+/testhadr/run/setBatchTag 33
+/random/setSeeds 123456822 987653760
+/run/beamOn 100000
+
+# Batch 34
+/testhadr/run/setBatchTag 34
+/random/setSeeds 123456823 987653743
+/run/beamOn 100000
+
+# Batch 35
+/testhadr/run/setBatchTag 35
+/random/setSeeds 123456824 987653726
+/run/beamOn 100000
+
+# Batch 36
+/testhadr/run/setBatchTag 36
+/random/setSeeds 123456825 987653709
+/run/beamOn 100000
+
+# Batch 37
+/testhadr/run/setBatchTag 37
+/random/setSeeds 123456826 987653692
+/run/beamOn 100000
+
+# Batch 38
+/testhadr/run/setBatchTag 38
+/random/setSeeds 123456827 987653675
+/run/beamOn 100000
+
+# Batch 39
+/testhadr/run/setBatchTag 39
+/random/setSeeds 123456828 987653658
+/run/beamOn 100000
+
+# Batch 40
+/testhadr/run/setBatchTag 40
+/random/setSeeds 123456829 987653641
+/run/beamOn 100000
+
+# Batch 41
+/testhadr/run/setBatchTag 41
+/random/setSeeds 123456830 987653624
+/run/beamOn 100000
+
+# Batch 42
+/testhadr/run/setBatchTag 42
+/random/setSeeds 123456831 987653607
+/run/beamOn 100000
+
+# Batch 43
+/testhadr/run/setBatchTag 43
+/random/setSeeds 123456832 987653590
+/run/beamOn 100000
+
+# Batch 44
+/testhadr/run/setBatchTag 44
+/random/setSeeds 123456833 987653573
+/run/beamOn 100000
+
+# Batch 45
+/testhadr/run/setBatchTag 45
+/random/setSeeds 123456834 987653556
+/run/beamOn 100000
+
+# Batch 46
+/testhadr/run/setBatchTag 46
+/random/setSeeds 123456835 987653539
+/run/beamOn 100000
+
+# Batch 47
+/testhadr/run/setBatchTag 47
+/random/setSeeds 123456836 987653522
+/run/beamOn 100000
+
+# Batch 48
+/testhadr/run/setBatchTag 48
+/random/setSeeds 123456837 987653505
+/run/beamOn 100000
+
+# Batch 49
+/testhadr/run/setBatchTag 49
+/random/setSeeds 123456838 987653488
+/run/beamOn 100000
+
+# Batch 50
+/testhadr/run/setBatchTag 50
+/random/setSeeds 123456839 987653471
+/run/beamOn 100000
+
+# Batch 51
+/testhadr/run/setBatchTag 51
+/random/setSeeds 123456840 987653454
+/run/beamOn 100000
+
+# Batch 52
+/testhadr/run/setBatchTag 52
+/random/setSeeds 123456841 987653437
+/run/beamOn 100000
+
+# Batch 53
+/testhadr/run/setBatchTag 53
+/random/setSeeds 123456842 987653420
+/run/beamOn 100000
+
+# Batch 54
+/testhadr/run/setBatchTag 54
+/random/setSeeds 123456843 987653403
+/run/beamOn 100000
+
+# Batch 55
+/testhadr/run/setBatchTag 55
+/random/setSeeds 123456844 987653386
+/run/beamOn 100000
+
+# Batch 56
+/testhadr/run/setBatchTag 56
+/random/setSeeds 123456845 987653369
+/run/beamOn 100000
+
+# Batch 57
+/testhadr/run/setBatchTag 57
+/random/setSeeds 123456846 987653352
+/run/beamOn 100000
+
+# Batch 58
+/testhadr/run/setBatchTag 58
+/random/setSeeds 123456847 987653335
+/run/beamOn 100000
+
+# Batch 59
+/testhadr/run/setBatchTag 59
+/random/setSeeds 123456848 987653318
+/run/beamOn 100000
+
+# Batch 60
+/testhadr/run/setBatchTag 60
+/random/setSeeds 123456849 987653301
+/run/beamOn 100000
+
+# Batch 61
+/testhadr/run/setBatchTag 61
+/random/setSeeds 123456850 987653284
+/run/beamOn 100000
+
+# Batch 62
+/testhadr/run/setBatchTag 62
+/random/setSeeds 123456851 987653267
+/run/beamOn 100000
+
+# Batch 63
+/testhadr/run/setBatchTag 63
+/random/setSeeds 123456852 987653250
+/run/beamOn 100000
+
+# Batch 64
+/testhadr/run/setBatchTag 64
+/random/setSeeds 123456853 987653233
+/run/beamOn 100000
+
+# Batch 65
+/testhadr/run/setBatchTag 65
+/random/setSeeds 123456854 987653216
+/run/beamOn 100000
+
+# Batch 66
+/testhadr/run/setBatchTag 66
+/random/setSeeds 123456855 987653199
+/run/beamOn 100000
+
+# Batch 67
+/testhadr/run/setBatchTag 67
+/random/setSeeds 123456856 987653182
+/run/beamOn 100000
+
+# Batch 68
+/testhadr/run/setBatchTag 68
+/random/setSeeds 123456857 987653165
+/run/beamOn 100000
+
+# Batch 69
+/testhadr/run/setBatchTag 69
+/random/setSeeds 123456858 987653148
+/run/beamOn 100000
+
+# Batch 70
+/testhadr/run/setBatchTag 70
+/random/setSeeds 123456859 987653131
+/run/beamOn 100000
+
+# Batch 71
+/testhadr/run/setBatchTag 71
+/random/setSeeds 123456860 987653114
+/run/beamOn 100000
+
+# Batch 72
+/testhadr/run/setBatchTag 72
+/random/setSeeds 123456861 987653097
+/run/beamOn 100000
+
+# Batch 73
+/testhadr/run/setBatchTag 73
+/random/setSeeds 123456862 987653080
+/run/beamOn 100000
+
+# Batch 74
+/testhadr/run/setBatchTag 74
+/random/setSeeds 123456863 987653063
+/run/beamOn 100000
+
+# Batch 75
+/testhadr/run/setBatchTag 75
+/random/setSeeds 123456864 987653046
+/run/beamOn 100000
+
+# Batch 76
+/testhadr/run/setBatchTag 76
+/random/setSeeds 123456865 987653029
+/run/beamOn 100000
+
+# Batch 77
+/testhadr/run/setBatchTag 77
+/random/setSeeds 123456866 987653012
+/run/beamOn 100000
+
+# Batch 78
+/testhadr/run/setBatchTag 78
+/random/setSeeds 123456867 987652995
+/run/beamOn 100000
+
+# Batch 79
+/testhadr/run/setBatchTag 79
+/random/setSeeds 123456868 987652978
+/run/beamOn 100000
+
+# Batch 80
+/testhadr/run/setBatchTag 80
+/random/setSeeds 123456869 987652961
+/run/beamOn 100000
+
+# Batch 81
+/testhadr/run/setBatchTag 81
+/random/setSeeds 123456870 987652944
+/run/beamOn 100000
+
+# Batch 82
+/testhadr/run/setBatchTag 82
+/random/setSeeds 123456871 987652927
+/run/beamOn 100000
+
+# Batch 83
+/testhadr/run/setBatchTag 83
+/random/setSeeds 123456872 987652910
+/run/beamOn 100000
+
+# Batch 84
+/testhadr/run/setBatchTag 84
+/random/setSeeds 123456873 987652893
+/run/beamOn 100000
+
+# Batch 85
+/testhadr/run/setBatchTag 85
+/random/setSeeds 123456874 987652876
+/run/beamOn 100000
+
+# Batch 86
+/testhadr/run/setBatchTag 86
+/random/setSeeds 123456875 987652859
+/run/beamOn 100000
+
+# Batch 87
+/testhadr/run/setBatchTag 87
+/random/setSeeds 123456876 987652842
+/run/beamOn 100000
+
+# Batch 88
+/testhadr/run/setBatchTag 88
+/random/setSeeds 123456877 987652825
+/run/beamOn 100000
+
+# Batch 89
+/testhadr/run/setBatchTag 89
+/random/setSeeds 123456878 987652808
+/run/beamOn 100000
+
+# Batch 90
+/testhadr/run/setBatchTag 90
+/random/setSeeds 123456879 987652791
+/run/beamOn 100000
+
+# Batch 91
+/testhadr/run/setBatchTag 91
+/random/setSeeds 123456880 987652774
+/run/beamOn 100000
+
+# Batch 92
+/testhadr/run/setBatchTag 92
+/random/setSeeds 123456881 987652757
+/run/beamOn 100000
+
+# Batch 93
+/testhadr/run/setBatchTag 93
+/random/setSeeds 123456882 987652740
+/run/beamOn 100000
+
+# Batch 94
+/testhadr/run/setBatchTag 94
+/random/setSeeds 123456883 987652723
+/run/beamOn 100000
+
+# Batch 95
+/testhadr/run/setBatchTag 95
+/random/setSeeds 123456884 987652706
+/run/beamOn 100000
+
+# Batch 96
+/testhadr/run/setBatchTag 96
+/random/setSeeds 123456885 987652689
+/run/beamOn 100000
+
+# Batch 97
+/testhadr/run/setBatchTag 97
+/random/setSeeds 123456886 987652672
+/run/beamOn 100000
+
+# Batch 98
+/testhadr/run/setBatchTag 98
+/random/setSeeds 123456887 987652655
+/run/beamOn 100000
+
+# Batch 99
+/testhadr/run/setBatchTag 99
+/random/setSeeds 123456888 987652638
+/run/beamOn 100000

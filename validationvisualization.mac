@@ -1,0 +1,36 @@
+#
+# Validation slab: single polyethylene (C2H4)n absorber, 10 m x 2 m x 2 m (X x Y x Z).
+# Default GPS is 1 MeV neutron (see PrimaryGeneratorAction); explicit below for clarity.
+#
+# Pencil beam is not available from this macro alone: GeneratePrimaries() forces a
+# square plane source each event. Override would require a C++ change.
+#
+#
+/control/verbose 1
+/run/verbose 1
+#
+/testhadr/det/setNbOfLayers 1
+/testhadr/det/setNbOfAbsor 1
+/testhadr/det/setAbsor 1 G4_POLYCARBONATE 5 mm
+/testhadr/det/setSizeYZ 1 mm
+#
+/run/initialize
+#
+# Visualization
+/vis/open
+/vis/viewer/set/autoRefresh false
+/vis/verbose errors
+/vis/drawVolume
+/vis/viewer/zoom 1.2
+/vis/scene/add/trajectories smooth
+/vis/modeling/trajectories/create/drawByCharge
+/vis/scene/endOfEventAction accumulate
+/vis/viewer/set/autoRefresh true
+/vis/verbose warnings
+#
+/gps/particle neutron
+/gps/energy 0.025 eV
+/gps/direction 1 0 0
+#
+/run/printProgress 10000
+#/run/beamOn 100000

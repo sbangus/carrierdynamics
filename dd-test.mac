@@ -1,0 +1,51 @@
+# DD-fusion neutron source at 100 mm standoff, 5 deg directed cone.
+# Equivalent to the C++ defaults in PrimaryGeneratorAction; provided as
+# a reference macro so the GPS configuration is fully reproducible.
+#
+# Geometry: bud-box (103 x 53 x 25 mm Al, 1.8 mm wall) at origin, detector
+# stack inside the cavity 10 mm from the inside of the +Z face. Source sits
+# on the +Z exterior side at standoff. With box external Z = 25 mm and
+# standoff = 100 mm, the source z-coordinate is +112.5 mm.
+#
+/control/verbose 1
+/run/verbose 1
+#
+# Default detector geometry (single layer of the validated stack)
+/testhadr/det/setNbOfLayers 1
+/testhadr/det/setNbOfAbsor 4
+/testhadr/det/setAbsor 1 G4_Ag        40 nm
+/testhadr/det/setAbsor 2 PNDI-T10     75 um
+/testhadr/det/setAbsor 3 ITO         100 nm
+/testhadr/det/setAbsor 4 QuartzGlass 100 um
+/testhadr/det/setSizeYZ 15 mm
+#
+# Bud-box environment (defaults; left explicit for documentation)
+/testhadr/det/setBoxExternal 103 53 25 mm
+/testhadr/det/setBoxWallThickness 1.8 mm
+/testhadr/det/setDetectorStandoff 10 mm
+/testhadr/det/setBoxMaterial G4_Al
+/testhadr/det/setCavityMaterial G4_AIR
+/testhadr/det/setWorldMaterial G4_AIR
+/testhadr/det/setLabSize 2000 2000 2000 mm
+#
+/run/initialize
+#
+# Source: DD neutron, 2.45 MeV, point at +Z exterior, 5 deg cone toward -Z
+/gps/particle neutron
+/gps/ene/type Mono
+/gps/ene/mono 2.45 MeV
+#
+/gps/pos/type Point
+/gps/pos/centre 0 0 56.25 mm
+#
+# Cone half-angle 5 deg about the -Z axis. For GPS "iso", theta = 0 emits
+# along -AngRef3 (where AngRef3 = rot1 x rot2). rot1 = +X, rot2 = +Y gives
+# AngRef3 = +Z, so theta = 0 fires neutrons in -Z (down toward the box).
+/gps/ang/type iso
+/gps/ang/rot1 1 0 0
+/gps/ang/rot2 0 1 0
+/gps/ang/mintheta 0 deg
+/gps/ang/maxtheta 10.5 deg
+#
+/run/printProgress 1000
+/run/beamOn 100000

@@ -1,0 +1,33 @@
+#
+# Macro file for thermal detector geometry
+# Ag / PNDI-T10+B4C / ITO / QuartzGlass with thermal neutrons
+#
+/control/verbose 1
+/run/verbose 1
+#
+/testhadr/det/setNbOfLayers 1
+/testhadr/det/setNbOfAbsor 4
+/testhadr/det/setAbsor 1 G4_Ag 40 nm
+/testhadr/det/setAbsor 2 PNDI-T10-B4C 75 um
+/testhadr/det/setAbsor 3 ITO 100 nm
+/testhadr/det/setAbsor 4 QuartzGlass 100 um
+/testhadr/det/setSizeYZ 1 mm
+#
+/run/initialize
+#
+# Visualization
+/vis/open
+/vis/viewer/set/autoRefresh false
+/vis/verbose errors
+/vis/drawVolume
+/vis/viewer/zoom 1.2
+/vis/scene/add/trajectories smooth
+/vis/modeling/trajectories/create/drawByCharge
+/vis/scene/endOfEventAction accumulate
+/vis/viewer/set/autoRefresh true
+/vis/verbose warnings
+#
+# Override default GPS energy to thermal
+/gps/energy 0.025 eV
+#
+/run/printProgress 1000

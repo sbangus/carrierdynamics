@@ -1,0 +1,21 @@
+# Build outputs
+build/
+build-ngc/
+build-*/
+
+# Geant4 run artifacts
+*.root
+Hadr05
+hadr05
+
+# Python / IDE
+.venv/
+__pycache__/
+*.pyc
+.vscode/
+.cursor/
+
+# OS / misc
+.DS_Store
+*.swp
+*~

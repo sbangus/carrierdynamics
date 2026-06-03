@@ -1,0 +1,50 @@
+# Short batch run: verbose tracking to inspect secondary creators in PNDI-T10.
+# Usage:
+#   cd build
+#   ./Hadr05 shine-dd-box-sectrace.mac 2>&1 | tee sectrace.log
+#   grep -E 'PNDI-T10|eIoni|phot|neutronInelastic|nCapture|hadElastic' sectrace.log | head -80
+#
+/control/verbose 0
+/run/verbose 0
+/tracking/verbose 1
+#
+/testhadr/det/setNbOfLayers 1
+/testhadr/det/setNbOfAbsor 4
+/testhadr/det/setAbsor 1 G4_Ag        40 nm
+/testhadr/det/setAbsor 2 PNDI-T10     75 um
+/testhadr/det/setAbsor 3 ITO         100 nm
+/testhadr/det/setAbsor 4 QuartzGlass 100 um
+/testhadr/det/setSizeYZ 15 mm
+#
+/testhadr/det/setBoxExternal 103 53 25 mm
+/testhadr/det/setBoxWallThickness 1.8 mm
+/testhadr/det/setDetectorStandoff 10 mm
+/testhadr/det/setBoxMaterial G4_Al
+/testhadr/det/setCavityMaterial G4_AIR
+/testhadr/det/setWorldMaterial G4_WATER
+/testhadr/det/setLabSize 2000 2000 2000 mm
+#
+/testhadr/det/setEncasementEnable false
+/testhadr/det/setModeratorEnable false
+#
+/run/numberOfThreads 1
+/run/initialize
+#
+/gps/particle neutron
+/gps/ene/type Mono
+/gps/ene/mono 2.45 MeV
+#
+/gps/pos/type Plane
+/gps/pos/shape Rectangle
+/gps/pos/halfx 25.75 mm
+/gps/pos/halfy 13.25 mm
+/gps/pos/centre 0 0 17.1 mm
+#
+/gps/ang/type iso
+/gps/ang/rot1 1 0 0
+/gps/ang/rot2 0 1 0
+/gps/ang/mintheta 0 deg
+/gps/ang/maxtheta 60 deg
+#
+/random/setSeeds 123456784 987654323
+/run/beamOn 5

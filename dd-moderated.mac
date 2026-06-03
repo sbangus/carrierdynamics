@@ -1,0 +1,47 @@
+# Same physics setup as dd-reactor.mac (world = water, bud box + air cavity +
+# detector), but with a smaller lab world to cut run time. Water interaction
+# density is unchanged; the main gain is less water volume for tracks that
+# would otherwise wander far before leaking or stopping.
+#
+# Lab 400 mm cube vs 2000 mm: ~125x less water volume (still fits the box
+# and the GPS position used in dd-reactor.mac).
+#
+/control/verbose 1
+/run/verbose 1
+#
+/testhadr/det/setNbOfLayers 1
+/testhadr/det/setNbOfAbsor 4
+/testhadr/det/setAbsor 1 G4_Ag        40 nm
+/testhadr/det/setAbsor 2 PNDI-T10     75 um
+/testhadr/det/setAbsor 3 ITO         100 nm
+/testhadr/det/setAbsor 4 QuartzGlass 100 um
+/testhadr/det/setSizeYZ 15 mm
+#
+/testhadr/det/setBoxExternal 103 53 25 mm
+/testhadr/det/setBoxWallThickness 1.8 mm
+/testhadr/det/setDetectorStandoff 10 mm
+/testhadr/det/setBoxMaterial G4_Al
+/testhadr/det/setCavityMaterial G4_AIR
+/testhadr/det/setWorldMaterial G4_WATER
+/testhadr/det/setLabSize 400 400 400 mm
+/testhadr/det/setSourceStandoff 50 mm
+#
+/testhadr/det/setModeratorEnable false
+#
+/run/initialize
+#
+/gps/particle neutron
+/gps/ene/type Mono
+/gps/ene/mono 2.45 MeV
+#
+/gps/pos/type Point
+/gps/pos/centre 0 0 56.25 mm
+#
+/gps/ang/type iso
+/gps/ang/rot1 1 0 0
+/gps/ang/rot2 0 1 0
+/gps/ang/mintheta 0 deg
+/gps/ang/maxtheta 10.5 deg
+#
+/run/printProgress 1000
+/run/beamOn 100000

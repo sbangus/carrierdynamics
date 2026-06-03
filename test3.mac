@@ -1,0 +1,51 @@
+# Bare layout: planar GPS in air -> aluminum bud box -> air cavity -> detector.
+# No moderator slabs. Same 4-layer stack and box as dd-moderator-stack.mac.
+#
+# Geometry along +Z (neutron drift toward -Z): GPS in air -> aluminum shell ->
+# air cavity -> detector.
+#
+/control/verbose 1
+/run/verbose 1
+#
+/testhadr/det/setNbOfLayers 1
+/testhadr/det/setNbOfAbsor 4
+/testhadr/det/setAbsor 1 G4_Ag        40 nm
+/testhadr/det/setAbsor 2 PNDI-T10     75 um
+/testhadr/det/setAbsor 3 ITO         100 nm
+/testhadr/det/setAbsor 4 QuartzGlass 100 um
+/testhadr/det/setSizeYZ 15 mm
+#
+/testhadr/det/setBoxExternal 103 53 25 mm
+/testhadr/det/setBoxWallThickness 1.8 mm
+/testhadr/det/setDetectorStandoff 10 mm
+/testhadr/det/setBoxMaterial G4_Al
+/testhadr/det/setCavityMaterial G4_AIR
+/testhadr/det/setWorldMaterial G4_AIR
+/testhadr/det/setLabSize 2000 2000 2000 mm
+#
+/testhadr/det/setNbOfModeratorLayers 0
+/testhadr/det/setModeratorEnable false
+/testhadr/det/setSourceStandoff 100 mm
+#
+/run/initialize
+#
+/gps/particle neutron
+/gps/ene/type Mono
+/gps/ene/mono 2.45 MeV
+#
+# Planar source on the +Z side: rectangle matches bud-box externals (103 x 53 mm).
+# Centre z = box half-depth (12.5 mm) + sourceStandoff (100 mm).
+/gps/pos/type Plane
+/gps/pos/shape Rectangle
+/gps/pos/halfx 51.5 mm
+/gps/pos/halfy 26.5 mm
+/gps/pos/centre 0 0 112.5 mm
+#
+/gps/ang/type iso
+/gps/ang/rot1 1 0 0
+/gps/ang/rot2 0 1 0
+/gps/ang/mintheta 0 deg
+/gps/ang/maxtheta 0 deg
+#
+/run/printProgress 1000
+/run/beamOn 100000

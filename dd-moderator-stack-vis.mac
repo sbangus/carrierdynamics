@@ -1,0 +1,89 @@
+# Same configuration as dd-moderator-stack.mac, with visualization and no
+# /run/beamOn. Run interactively: ./Hadr05 then
+# /control/execute dd-moderator-stack-vis.mac then /run/beamOn N
+#
+# Three-layer moderator stack (layer 1 on aluminum +Z face, toward +Z / source):
+#   lead (5 mm) -> heavy water (85 mm) -> polyethylene (95 mm).
+# Along -Z toward the detector: ... polyethylene -> D2O -> Pb -> Al shell ->
+# cavity -> detector.
+#
+# Geometry along +Z (neutron drift toward -Z): planar GPS in air -> 10 mm gap ->
+# polyethylene (95 mm) -> HeavyWater (85 mm) -> G4_Pb (5 mm) -> aluminum
+# shell -> air cavity -> detector.
+#
+# sourceStandoff must be >= sum(layer thicknesses) + moderatorGap = 195 mm.
+#
+/control/verbose 1
+/run/verbose 1
+#
+/testhadr/det/setNbOfLayers 1
+/testhadr/det/setNbOfAbsor 4
+/testhadr/det/setAbsor 1 G4_Ag        40 nm
+/testhadr/det/setAbsor 2 PNDI-T10     75 um
+/testhadr/det/setAbsor 3 ITO         100 nm
+/testhadr/det/setAbsor 4 QuartzGlass 100 um
+/testhadr/det/setSizeYZ 15 mm
+#
+/testhadr/det/setBoxExternal 103 53 25 mm
+/testhadr/det/setBoxWallThickness 1.8 mm
+/testhadr/det/setDetectorStandoff 10 mm
+/testhadr/det/setBoxMaterial G4_Al
+/testhadr/det/setCavityMaterial G4_AIR
+/testhadr/det/setWorldMaterial G4_AIR
+/testhadr/det/setLabSize 2000 2000 2000 mm
+#
+/testhadr/det/setNbOfModeratorLayers 3
+/testhadr/det/setModeratorLayer 1 G4_Pb 5 mm
+/testhadr/det/setModeratorLayer 2 HeavyWater 85 mm
+/testhadr/det/setModeratorLayer 3 polyethylene 95 mm
+/testhadr/det/setModeratorGap 10 mm
+/testhadr/det/setSourceStandoff 200 mm
+#
+/run/numberOfThreads 1
+/run/initialize
+#
+/gps/particle neutron
+/gps/ene/type Mono
+/gps/ene/mono 2.45 MeV
+#
+# Planar source on the +Z face: rectangle matches bud-box externals (103 x 53 mm).
+# Centre z = box half-depth (12.5 mm) + sourceStandoff (200 mm).
+/gps/pos/type Plane
+/gps/pos/shape Rectangle
+/gps/pos/halfx 51.5 mm
+/gps/pos/halfy 26.5 mm
+/gps/pos/centre 0 0 212.5 mm
+#
+# Collimated beam along -Z (toward detector). GPS "iso" emits along -AngRef3
+# (AngRef3 = rot1 x rot2); rot1 = +X, rot2 = +Y => theta = 0 is -Z.
+/gps/ang/type iso
+/gps/ang/rot1 1 0 0
+/gps/ang/rot2 0 1 0
+/gps/ang/mintheta 0 deg
+/gps/ang/maxtheta 0 deg
+#
+/run/printProgress 1000
+#
+# Visualization-only: inspect geometry (moderator stack + planar source). No /run/beamOn.
+/vis/open
+/vis/viewer/set/autoRefresh false
+/vis/verbose errors
+/vis/drawVolume
+/vis/geometry/set/visibility World 0 false
+/vis/geometry/set/visibility world 0 false
+/vis/viewer/set/style wireframe
+/vis/viewer/set/viewpointThetaPhi 65 35 deg
+/vis/viewer/zoom 2.0
+/vis/scene/add/axes 0 0 0 20 mm
+/vis/scene/add/trajectories smooth
+/vis/modeling/trajectories/create/drawByParticleID
+/vis/modeling/trajectories/drawByParticleID-0/set neutron cyan
+/vis/modeling/trajectories/drawByParticleID-0/set proton red
+/vis/modeling/trajectories/drawByParticleID-0/set gamma yellow
+/vis/modeling/trajectories/drawByParticleID-0/set e- green
+/vis/modeling/trajectories/drawByParticleID-0/set e+ magenta
+/vis/modeling/trajectories/drawByParticleID-0/set alpha orange
+/tracking/storeTrajectory 1
+/vis/scene/endOfEventAction accumulate
+/vis/viewer/set/autoRefresh true
+/vis/verbose warnings
