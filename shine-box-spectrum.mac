@@ -23,7 +23,8 @@
 /testhadr/det/setAbsor 2 PNDI-T10     75 um
 /testhadr/det/setAbsor 3 ITO         100 nm
 /testhadr/det/setAbsor 4 QuartzGlass 100 um
-/testhadr/det/setSizeYZ 15 mm
+/testhadr/det/setSizeY 8 mm
+/testhadr/det/setSizeZ 11 mm
 #
 # No bud box: calorimeter sits in world; front Z = half total absorber depth.
 /testhadr/det/setBoxWallThickness 0 mm

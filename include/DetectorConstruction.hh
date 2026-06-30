@@ -35,6 +35,7 @@
 #include "globals.hh"
 
 class G4Box;
+class G4VSolid;
 class G4LogicalVolume;
 class G4VPhysicalVolume;
 class G4Material;
@@ -64,6 +65,8 @@ class DetectorConstruction : public G4VUserDetectorConstruction
     void SetCavityMaterial(const G4String&);
     void SetBoxMaterial(const G4String&);
     void SetCalorSizeYZ(G4double);
+    void SetCalorSizeY(G4double);
+    void SetCalorSizeZ(G4double);
     void SetNbOfLayers(G4int);
 
     void SetBoxExternal(G4double xExt, G4double yExt, G4double zExt);
@@ -83,6 +86,10 @@ class DetectorConstruction : public G4VUserDetectorConstruction
     void SetEncasementEnable(G4bool);
     void SetEncasementOuter(G4double xExt, G4double yExt, G4double zExt);
     void SetEncasementWallThickness(G4double);
+
+    /// Cs-137 check-source envelope: hexagonal prism (axis || global +Z) with a
+    /// central cylindrical bore. Used with /gps/pos/confine Cs137Source.
+    void SetCs137SourceEnable(G4bool);
 
     G4bool GetModeratorEnable() const
     {
@@ -113,6 +120,9 @@ class DetectorConstruction : public G4VUserDetectorConstruction
 
     G4double GetCalorThickness() const { return fCalorThickness; };
     G4double GetCalorSizeYZ() const { return fCalorSizeYZ; };
+    G4double GetCalorSizeY() const { return fCalorSizeY; };
+    G4double GetCalorSizeZ() const { return fCalorSizeZ; };
+    G4double GetCalorTransverseArea() const { return fCalorSizeY * fCalorSizeZ; };
 
     G4int GetNbOfLayers() const { return fNbOfLayers; };
 
@@ -132,6 +142,14 @@ class DetectorConstruction : public G4VUserDetectorConstruction
     {
       return fPhysiModeratorLayer[1];
     }
+    G4bool HasModeratorStack() const { return fLogicModeratorLayer[1] != nullptr; }
+    const G4LogicalVolume* GetModeratorLogical(G4int layer) const
+    {
+      return (layer >= 1 && layer <= kMaxModeratorLayers)
+                 ? fLogicModeratorLayer[layer]
+                 : nullptr;
+    }
+    G4bool IsModeratorLogical(const G4LogicalVolume* lv) const;
 
     // Position (global) where the source default sits: +Z at sourceStandoff from
     // the outer +Z face of the bud box, or from the polycarbonate shell if
@@ -152,6 +170,8 @@ class DetectorConstruction : public G4VUserDetectorConstruction
     G4double fLayerThickness = 0.;
 
     G4double fCalorSizeYZ = 0.;
+    G4double fCalorSizeY = 0.;
+    G4double fCalorSizeZ = 0.;
     G4double fCalorThickness = 0.;
 
     // Lab world (large air-filled volume containing the bud box)
@@ -245,6 +265,13 @@ class DetectorConstruction : public G4VUserDetectorConstruction
     G4VPhysicalVolume* fPhysiEncasementAir = nullptr;
     G4LogicalVolume* fLogicPCShell = nullptr;
     G4VPhysicalVolume* fPhysiPCShell = nullptr;
+
+    // Cs-137 check source: hex shell (G4Polyhedra) minus central bore (G4Tubs).
+    G4bool fCs137SourceEnable = false;
+    G4VSolid* fSolidCs137Source = nullptr;
+    G4LogicalVolume* fLogicCs137Source = nullptr;
+    G4VPhysicalVolume* fPhysiCs137Source = nullptr;
+    G4RotationMatrix* fCs137SourceRotation = nullptr;
 
     // Rotation applied to the calorimeter so its (locally X-stacked) layout
     // becomes Z-stacked in the global frame, with the first absorber facing

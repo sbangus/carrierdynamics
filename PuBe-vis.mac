@@ -1,0 +1,100 @@
+# Same configuration as PuBe.mac (Al box + 4-absorber detector, no moderators,
+# PuBe cylindrical neutron source on the +Z box face), with visualization and no
+# /run/beamOn. Run interactively: ./Hadr05 then
+# /control/execute PuBe-vis.mac then /run/beamOn N
+#
+/control/verbose 1
+/run/verbose 1
+/random/setSeeds 940139003 139940004
+#
+/testhadr/det/setNbOfLayers 1
+/testhadr/det/setNbOfAbsor 4
+/testhadr/det/setAbsor 1 G4_Ag        40 nm
+/testhadr/det/setAbsor 2 PNDI-T10-B4C 30 um
+/testhadr/det/setAbsor 3 ITO          100 nm
+/testhadr/det/setAbsor 4 QuartzGlass  100 um
+/testhadr/det/setSizeY 8 mm
+/testhadr/det/setSizeZ 11 mm
+#
+/testhadr/det/setBoxExternal 103 53 25 mm
+/testhadr/det/setBoxWallThickness 1.8 mm
+/testhadr/det/setDetectorStandoff 5 mm
+/testhadr/det/setBoxMaterial G4_Al
+/testhadr/det/setCavityMaterial G4_AIR
+/testhadr/det/setWorldMaterial G4_AIR
+/testhadr/det/setLabSize 2000 2000 2000 mm
+#
+/testhadr/det/setNbOfModeratorLayers 0
+/testhadr/det/setModeratorEnable false
+/testhadr/det/setSourceStandoff 30 mm
+#
+/run/numberOfThreads 1
+/run/initialize
+#
+/analysis/setFileName PuBe
+#
+/gps/particle neutron
+#
+# Cylinder: r = 1 cm, length 4 cm along box long edge (+X), on +Z box face.
+/gps/pos/type Volume
+/gps/pos/shape Cylinder
+/gps/pos/radius 12.5 mm
+/gps/pos/halfz 20 mm
+/gps/pos/centre 0 0 22.5 mm
+/gps/pos/rot1 0 1 0
+/gps/pos/rot2 0 0 1
+/gps/ang/type iso
+/gps/ang/mintheta 0 deg
+/gps/ang/maxtheta 180 deg
+#
+# PuBe energy spectrum (per-bin differential probabilities from the CDF), MeV.
+/gps/ene/type User
+/gps/hist/type energy
+/gps/hist/point 0.0  0.0
+/gps/hist/point 0.5  0.01702
+/gps/hist/point 1.0  0.03404
+/gps/hist/point 1.5  0.05107
+/gps/hist/point 2.0  0.06808
+/gps/hist/point 2.5  0.07660
+/gps/hist/point 3.0  0.08510
+/gps/hist/point 3.5  0.09362
+/gps/hist/point 4.0  0.09787
+/gps/hist/point 4.5  0.09362
+/gps/hist/point 5.0  0.08085
+/gps/hist/point 5.5  0.06809
+/gps/hist/point 6.0  0.05532
+/gps/hist/point 6.5  0.04255
+/gps/hist/point 7.0  0.03404
+/gps/hist/point 7.5  0.02553
+/gps/hist/point 8.0  0.02128
+/gps/hist/point 8.5  0.01702
+/gps/hist/point 9.0  0.01277
+/gps/hist/point 9.5  0.01021
+/gps/hist/point 10.0 0.00766
+/gps/hist/point 10.5 0.00511
+/gps/hist/point 11.0 0.00255
+#
+/run/printProgress 100
+#
+/vis/open
+/vis/viewer/set/autoRefresh false
+/vis/verbose errors
+/vis/drawVolume
+/vis/geometry/set/visibility World 0 false
+/vis/geometry/set/visibility world 0 false
+/vis/viewer/set/style wireframe
+/vis/viewer/set/viewpointThetaPhi 65 35 deg
+/vis/viewer/zoom 2.0
+/vis/scene/add/axes 0 0 0 20 mm
+/vis/scene/add/trajectories smooth
+/vis/modeling/trajectories/create/drawByParticleID
+/vis/modeling/trajectories/drawByParticleID-0/set neutron cyan
+/vis/modeling/trajectories/drawByParticleID-0/set proton red
+/vis/modeling/trajectories/drawByParticleID-0/set gamma yellow
+/vis/modeling/trajectories/drawByParticleID-0/set e- green
+/vis/modeling/trajectories/drawByParticleID-0/set e+ magenta
+/vis/modeling/trajectories/drawByParticleID-0/set alpha orange
+/tracking/storeTrajectory 1
+/vis/scene/endOfEventAction accumulate
+/vis/viewer/set/autoRefresh true
+/vis/verbose warnings

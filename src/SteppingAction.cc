@@ -163,6 +163,30 @@ void SteppingAction::UserSteppingAction(const G4Step* aStep)
   G4VPhysicalVolume* volume = prePoint->GetTouchableHandle()->GetVolume();
   const G4LogicalVolume* preLV =
       (volume != nullptr) ? volume->GetLogicalVolume() : nullptr;
+
+  // Moderator-born secondaries: score at first step inside a moderator layer.
+  if (track->GetCurrentStepNumber() == 1 && track->GetParentID() > 0 && preLV != nullptr
+      && fDetector->IsModeratorLogical(preLV))
+  {
+    const G4VProcess* creator = track->GetCreatorProcess();
+    G4double vtxKE = track->GetVertexKineticEnergy();
+
+    if (particle == G4Gamma::Definition() && creator != nullptr) {
+      const G4String& creatorName = creator->GetProcessName();
+      if (creatorName == "nCapture" || creatorName == "neutronInelastic") {
+        analysisManager->FillH1(kModeratorCaptureGammaKE, vtxKE);
+      }
+    }
+
+    G4int pi = FixedParticleIdx(particle->GetParticleName());
+    if (pi >= 0) {
+      analysisManager->FillH1(ModeratorSecESpecId(pi), vtxKE);
+      if (track->GetParentID() == 1) {
+        analysisManager->FillH1(ModeratorFirstGenSecESpecId(pi), vtxKE);
+      }
+    }
+  }
+
   G4int absorNum = -1;
   for (G4int i = 1; i <= fDetector->GetNbOfAbsor(); ++i) {
     if (preLV == fDetector->GetAbsorberLogical(i)) { absorNum = i; break; }
@@ -172,6 +196,12 @@ void SteppingAction::UserSteppingAction(const G4Step* aStep)
   // here we are in an absorber. Locate it
   //
   G4int layerNum = prePoint->GetTouchableHandle()->GetCopyNumber(1);
+
+  // Per-track path length in this absorber (all particle types, charged and
+  // neutral). Accumulated here and flushed once per track in
+  // TrackingAction::PostUserTrackingAction into per-particle, per-absorber
+  // path-length histograms and the total-track-length histograms.
+  fEventAct->AddTrackPathLength(absorNum, aStep->GetStepLength());
 
   // collect energy deposit (taking into account track weight)
   G4double edep = aStep->GetTotalEnergyDeposit();
@@ -183,6 +213,9 @@ void SteppingAction::UserSteppingAction(const G4Step* aStep)
 
   // sum up per event
   fEventAct->SumEnergy(absorNum, edep, stepl);
+  if (track->GetParentID() == 0 && edep > 0.) {
+    fEventAct->SumPrimaryEnergy(absorNum, edep);
+  }
   if (edep > 0.) {
     fEventAct->SumEnergyByParticle(absorNum, particle->GetParticleName(), edep);
     if (particle == G4Electron::Definition()) {
@@ -227,8 +260,9 @@ void SteppingAction::UserSteppingAction(const G4Step* aStep)
     G4String procName = process->GetProcessName();
     if (procName != "Transportation") {
       G4int category = -1;
-      if (procName == "hadElastic") category = 0;
-      else if (procName == "neutronInelastic" || procName == "nCapture") category = 1;
+      if (procName == "hadElastic") category = kProcCatHadElastic;
+      else if (procName == "neutronInelastic" || procName == "nCapture")
+        category = kProcCatNInelastic;
 
       if (category >= 0) {
         G4ThreeVector localPos = prePoint->GetTouchableHandle()->GetHistory()
@@ -246,6 +280,25 @@ void SteppingAction::UserSteppingAction(const G4Step* aStep)
                               prePoint->GetKineticEnergy());
 
       fEventAct->MarkNeutronInteraction(absorNum);
+    }
+  }
+
+  // Gamma interaction depth per absorber: Compton scattering (compt),
+  // photoelectric absorption (phot), and pair production (conv). Scored at the
+  // interaction point (post-step) expressed in the absorber's local frame, so
+  // the depth runs 0 (front face) -> thickness (back face) along the stack.
+  if (particle == G4Gamma::Definition() && process != nullptr) {
+    const G4String& procName = process->GetProcessName();
+    G4int category = -1;
+    if (procName == "compt") category = kProcCatCompton;
+    else if (procName == "phot") category = kProcCatPhotoelectric;
+    else if (procName == "conv") category = kProcCatPairProd;
+
+    if (category >= 0) {
+      G4ThreeVector localPos = prePoint->GetTouchableHandle()->GetHistory()
+          ->GetTopTransform().TransformPoint(endPoint->GetPosition());
+      G4double depth = localPos.x() + 0.5 * fDetector->GetAbsorThickness(absorNum);
+      analysisManager->FillH1(DepthHistoId(absorNum, category), depth / mm);
     }
   }
 
@@ -290,6 +343,25 @@ void SteppingAction::UserSteppingAction(const G4Step* aStep)
       analysisManager->FillH1(SecESpecId(pi), vtxKE);
       if (track->GetParentID() == 1) {
         analysisManager->FillH1(FirstGenSecESpecId(pi), vtxKE);
+      }
+
+      // e- KE-at-birth split by ancestry (gamma- vs ion/hadronic-mediated),
+      // mirroring the e- Edep and path-length lineage splits. The lineage tag
+      // is set earlier in this same first step.
+      if (pi == 5) {
+        const G4int lineage = fEventAct->GetElectronLineage(track->GetTrackID());
+        if (lineage == kElectronLineageGamma || lineage == kElectronLineageIon) {
+          analysisManager->FillH1(lineage == kElectronLineageGamma
+                                    ? kSecESpecElectronGamma
+                                    : kSecESpecElectronIonic,
+                                  vtxKE);
+          if (track->GetParentID() == 1) {
+            analysisManager->FillH1(lineage == kElectronLineageGamma
+                                      ? kFirstGenSecESpecElectronGamma
+                                      : kFirstGenSecESpecElectronIonic,
+                                    vtxKE);
+          }
+        }
       }
     }
   }

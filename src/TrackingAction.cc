@@ -30,8 +30,10 @@
 
 #include "DetectorConstruction.hh"
 #include "EventAction.hh"
+#include "HistoManager.hh"
 #include "Run.hh"
 
+#include "G4AnalysisManager.hh"
 #include "G4RunManager.hh"
 #include "G4StepStatus.hh"
 
@@ -70,6 +72,10 @@ void TrackingAction::PreUserTrackingAction(const G4Track* track)
       run->SumEnergyFlow(pl, Eflow);
     }
   }
+
+  // Reset the per-track path-length accumulator for the track about to be
+  // transported (Geant4 finishes one track before starting the next).
+  fEventAct->BeginTrackPath();
 }
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
@@ -84,6 +90,58 @@ void TrackingAction::PostUserTrackingAction(const G4Track* aTrack)
     if (parentID > 0) index = 1;  // primary=0, secondaries=1
     G4double eleak = aTrack->GetKineticEnergy();
     fEventAct->SumEnergyLeak(eleak, index);
+  }
+
+  // Flush per-track path-length accumulation into per-particle histograms.
+  // Secondaries only (the primary is the neutron source, not among the fixed
+  // particle types). Lengths are raw internal units (mm); histograms carry the
+  // "mm" unit so the axis reads in mm.
+  if (aTrack->GetParentID() > 0) {
+    const G4int pi = FixedParticleIdx(aTrack->GetDefinition()->GetParticleName());
+    if (pi >= 0) {
+      auto* analysis = G4AnalysisManager::Instance();
+      for (const auto& entry : fEventAct->GetTrackPathMap()) {
+        if (entry.second > 0.) {
+          analysis->FillH1(TrackPathLengthId(entry.first, pi), entry.second);
+        }
+      }
+      const G4double total = aTrack->GetTrackLength();
+      if (total > 0.) analysis->FillH1(TotalTrackLengthId(pi), total);
+
+      // e- path length split by ancestry, mirroring the e- Edep lineage split.
+      if (pi == 5) {
+        const G4int lineage = fEventAct->GetElectronLineage(aTrack->GetTrackID());
+        if (lineage == kElectronLineageGamma || lineage == kElectronLineageIon) {
+          for (const auto& entry : fEventAct->GetTrackPathMap()) {
+            if (entry.second > 0.) {
+              const G4int id = (lineage == kElectronLineageGamma)
+                                 ? PathElectronGammaId(entry.first)
+                                 : PathElectronIonicId(entry.first);
+              analysis->FillH1(id, entry.second);
+            }
+          }
+          if (total > 0.) {
+            analysis->FillH1((lineage == kElectronLineageGamma)
+                               ? kTotalPathElectronGamma
+                               : kTotalPathElectronIonic,
+                             total);
+          }
+        }
+      }
+    }
+  }
+
+  // Primary-particle path length (ParentID == 0): per-absorber accumulation and
+  // total track length, particle-type agnostic (alpha, neutron, gamma, etc.).
+  if (aTrack->GetParentID() == 0) {
+    auto* analysis = G4AnalysisManager::Instance();
+    for (const auto& entry : fEventAct->GetTrackPathMap()) {
+      if (entry.second > 0.) {
+        analysis->FillH1(PrimaryPathLengthId(entry.first), entry.second);
+      }
+    }
+    const G4double total = aTrack->GetTrackLength();
+    if (total > 0.) analysis->FillH1(kTotalPrimaryPathLength, total);
   }
 }
 

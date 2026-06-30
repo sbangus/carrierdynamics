@@ -49,6 +49,7 @@ void EventAction::BeginOfEventAction(const G4Event*)
   //
   for (G4int k = 0; k < kMaxAbsor; k++) {
     fEnergyDeposit[k] = fTrackLengthCh[k] = 0.0;
+    fPrimaryEdep[k] = 0.0;
     fEdepByParticle[k].clear();
     fNeutronInteracted[k] = false;
     fEdepElectronGamma[k] = 0.;
@@ -69,6 +70,13 @@ void EventAction::SumEnergy(G4int k, G4double de, G4double dl)
 {
   fEnergyDeposit[k] += de;
   fTrackLengthCh[k] += dl;
+}
+
+//....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
+
+void EventAction::SumPrimaryEnergy(G4int k, G4double de)
+{
+  if (k >= 1 && k <= kMaxAbsor && de > 0.) fPrimaryEdep[k - 1] += de;
 }
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
@@ -140,6 +148,14 @@ G4String EventAction::GetTrackParticleName(G4int trackId) const
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
 
+void EventAction::AddTrackPathLength(G4int absorNum, G4double len)
+{
+  if (absorNum < 1 || absorNum > kMaxAbsor || len <= 0.) return;
+  fTrackPathInAbsor[absorNum] += len;
+}
+
+//....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
+
 void EventAction::SumElectronEdepByLineage(G4int absorNum, G4int lineage, G4double de)
 {
   if (absorNum < 1 || absorNum > kMaxAbsor || de <= 0.) return;
@@ -195,6 +211,9 @@ void EventAction::EndOfEventAction(const G4Event*)
     }
     if (fEdepElectronIonic[idx] > 0.) {
       analysis->FillH1(EdepElectronIonicId(k), fEdepElectronIonic[idx]);
+    }
+    if (fPrimaryEdep[idx] > 0.) {
+      analysis->FillH1(PrimaryEdepId(k), fPrimaryEdep[idx]);
     }
   }
   run->SumEnergies(EdepTot, fEnergyLeak[0], fEnergyLeak[1]);

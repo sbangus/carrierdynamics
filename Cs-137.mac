@@ -1,0 +1,62 @@
+# Cs-137 check source on the +Z face of the aluminum bud box.
+# Geometry: Al box + 4-absorber detector (as in dd-moderator-stack), NO moderators.
+#
+# Source: monoenergetic 662 keV gammas (Cs-137 / Ba-137m line), isotropic (4 pi),
+# emitted uniformly from a hexagonal cylindrical shell (7 mm side, 1 cm long,
+# 4 mm-radius central bore). The envelope is built in DetectorConstruction and
+# GPS is confined to it (/gps/pos/confine Cs137Source). Axis || global +/- X;
+# a 10 mm x 7 mm side face rests on the box +Z exterior (z = 12.5 mm), centred
+# on the detector. GPS centre z = 12.5 mm + apothem = 18.562 mm.
+#
+/control/verbose 1
+/run/verbose 1
+#
+/testhadr/det/setNbOfLayers 1
+/testhadr/det/setNbOfAbsor 4
+/testhadr/det/setAbsor 1 G4_Ag        40 nm
+/testhadr/det/setAbsor 2 PNDI-T10 30 um
+/testhadr/det/setAbsor 3 ITO          100 nm
+/testhadr/det/setAbsor 4 QuartzGlass  100 um
+/testhadr/det/setSizeY 9 mm
+/testhadr/det/setSizeZ 12 mm
+#
+/testhadr/det/setBoxExternal 103 53 25 mm
+/testhadr/det/setBoxWallThickness 1.8 mm
+/testhadr/det/setDetectorStandoff 5 mm
+/testhadr/det/setBoxMaterial G4_Al
+/testhadr/det/setCavityMaterial G4_AIR
+/testhadr/det/setWorldMaterial G4_AIR
+/testhadr/det/setLabSize 2000 2000 2000 mm
+#
+/testhadr/det/setCs137SourceEnable true
+#
+# No moderators.
+/testhadr/det/setNbOfModeratorLayers 0
+/testhadr/det/setModeratorEnable false
+/testhadr/det/setSourceStandoff 30 mm
+#
+/random/setSeeds 137662001 662137002
+/run/initialize
+#
+/analysis/setFileName Cs-137
+#
+/gps/particle gamma
+/gps/ene/type Mono
+/gps/ene/mono 662 keV
+#
+# Volume source confined to the hex shell (Cs137Source). Cylinder axis || +X
+# (rot1/rot2 as in PuBe.mac); must enclose the envelope (circumradius 7 mm).
+/gps/pos/type Volume
+/gps/pos/shape Cylinder
+/gps/pos/radius 7 mm
+/gps/pos/halfz 5 mm
+/gps/pos/centre 0 0 18.562 mm
+/gps/pos/rot1 0 1 0
+/gps/pos/rot2 0 0 1
+/gps/pos/confine Cs137Source
+/gps/ang/type iso
+/gps/ang/mintheta 0 deg
+/gps/ang/maxtheta 180 deg
+#
+/run/printProgress 1000000
+/run/beamOn 18100000

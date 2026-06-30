@@ -1,0 +1,79 @@
+# Am-241 dual source: 5.5 MeV alphas + 59.5 keV gammas (Np-237 de-excitation line).
+# Geometry: bare 4-absorber detector in air (no aluminum bud box), NO moderators.
+#
+# Two GPS sources share the same planar rectangle (6 mm x 6 mm) at z = 2 mm,
+# collimated along +Z (mintheta = maxtheta = 0 deg).
+#
+# Source 1: mono 5.5 MeV alphas (intensity 1.0).
+# Source 2: mono 59.5 keV gammas (intensity 0.359 relative to alphas).
+#
+# Expected primaries per run (intensity-weighted random selection):
+#   alphas : 53000  (intensity 1.0)
+#   gammas : 53000 * 0.359 = 19027  (intensity 0.359)
+#   total  : 72027  =>  /run/beamOn 72027
+#
+/control/verbose 1
+/run/verbose 1
+#
+/testhadr/det/setNbOfLayers 1
+/testhadr/det/setNbOfAbsor 4
+/testhadr/det/setAbsor 1 G4_Ag        40 nm
+/testhadr/det/setAbsor 2 PNDI-T10 30 um
+/testhadr/det/setAbsor 3 ITO          100 nm
+/testhadr/det/setAbsor 4 QuartzGlass  100 nm
+/testhadr/det/setSizeY 8 mm
+/testhadr/det/setSizeZ 11 mm
+#
+/testhadr/det/setBoxExternal 103 53 25 mm
+/testhadr/det/setBoxWallThickness 0 mm
+/testhadr/det/setEncasementEnable false
+/testhadr/det/setDetectorStandoff 5 mm
+/testhadr/det/setBoxMaterial G4_Al
+/testhadr/det/setCavityMaterial G4_AIR
+/testhadr/det/setWorldMaterial G4_AIR
+/testhadr/det/setLabSize 2000 2000 2000 mm
+#
+# No moderators.
+/testhadr/det/setNbOfModeratorLayers 0
+/testhadr/det/setModeratorEnable false
+/testhadr/det/setSourceStandoff 30 mm
+#
+/random/setSeeds 910132001 139540102
+/run/initialize
+#
+/analysis/setFileName Am241
+#
+# --- Source 1: 5.5 MeV alphas (intensity 1.0) ---
+/gps/source/intensity 1.0
+/gps/particle alpha
+/gps/ene/type Mono
+/gps/ene/mono 5.5 MeV
+/gps/pos/type Plane
+/gps/pos/shape Rectangle
+/gps/pos/halfx 3 mm
+/gps/pos/halfy 3 mm
+/gps/pos/centre 0 0 2 mm
+/gps/ang/type iso
+/gps/ang/rot1 1 0 0
+/gps/ang/rot2 0 1 0
+/gps/ang/mintheta 0 deg
+/gps/ang/maxtheta 0 deg
+#
+# --- Source 2: 59.5 keV gammas (intensity 0.359) ---
+/gps/source/add 0.359
+/gps/particle gamma
+/gps/ene/type Mono
+/gps/ene/mono 59.5 keV
+/gps/pos/type Plane
+/gps/pos/shape Rectangle
+/gps/pos/halfx 3 mm
+/gps/pos/halfy 3 mm
+/gps/pos/centre 0 0 2 mm
+/gps/ang/type iso
+/gps/ang/rot1 1 0 0
+/gps/ang/rot2 0 1 0
+/gps/ang/mintheta 0 deg
+/gps/ang/maxtheta 0 deg
+#
+/run/printProgress 100000
+/run/beamOn 72027

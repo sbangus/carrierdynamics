@@ -53,12 +53,28 @@ DetectorMessenger::DetectorMessenger(DetectorConstruction* Det) : fDetector(Det)
   fDetDir->SetGuidance("detector construction commands");
 
   fSizeYZCmd = new G4UIcmdWithADoubleAndUnit("/testhadr/det/setSizeYZ", this);
-  fSizeYZCmd->SetGuidance("Set tranverse size of the calorimeter");
+  fSizeYZCmd->SetGuidance("Set square transverse size (local Y and Z equal).");
   fSizeYZCmd->SetParameterName("Size", false);
   fSizeYZCmd->SetRange("Size>0.");
   fSizeYZCmd->SetUnitCategory("Length");
   fSizeYZCmd->AvailableForStates(G4State_PreInit);
   fSizeYZCmd->SetToBeBroadcasted(false);
+
+  fSizeYCmd = new G4UIcmdWithADoubleAndUnit("/testhadr/det/setSizeY", this);
+  fSizeYCmd->SetGuidance("Transverse full size along calorimeter local Y (global Y after rotateY).");
+  fSizeYCmd->SetParameterName("SizeY", false);
+  fSizeYCmd->SetRange("SizeY>0.");
+  fSizeYCmd->SetUnitCategory("Length");
+  fSizeYCmd->AvailableForStates(G4State_PreInit);
+  fSizeYCmd->SetToBeBroadcasted(false);
+
+  fSizeZCmd = new G4UIcmdWithADoubleAndUnit("/testhadr/det/setSizeZ", this);
+  fSizeZCmd->SetGuidance("Transverse full size along calorimeter local Z (global X after rotateY).");
+  fSizeZCmd->SetParameterName("SizeZ", false);
+  fSizeZCmd->SetRange("SizeZ>0.");
+  fSizeZCmd->SetUnitCategory("Length");
+  fSizeZCmd->AvailableForStates(G4State_PreInit);
+  fSizeZCmd->SetToBeBroadcasted(false);
 
   fNbLayersCmd = new G4UIcmdWithAnInteger("/testhadr/det/setNbOfLayers", this);
   fNbLayersCmd->SetGuidance("Set number of layers.");
@@ -317,6 +333,17 @@ DetectorMessenger::DetectorMessenger(DetectorConstruction* Det) : fDetector(Det)
   fEncasementWallCmd->SetRange("Thickness>0.");
   fEncasementWallCmd->AvailableForStates(G4State_PreInit);
   fEncasementWallCmd->SetToBeBroadcasted(false);
+
+  fCs137SourceEnableCmd = new G4UIcmdWithABool("/testhadr/det/setCs137SourceEnable", this);
+  fCs137SourceEnableCmd->SetGuidance(
+    "If true, build the Cs-137 check-source envelope in the lab world: a regular "
+    "hexagonal prism (7 mm side, 1 cm long) with a 4 mm-radius central bore. "
+    "Rotated so the axis is parallel to global +X and a flat 7 mm x 10 mm face "
+    "rests on the bud-box +Z exterior, centred on the detector. Use with "
+    "/gps/pos/confine Cs137Source.");
+  fCs137SourceEnableCmd->SetParameterName("Enable", false);
+  fCs137SourceEnableCmd->AvailableForStates(G4State_PreInit);
+  fCs137SourceEnableCmd->SetToBeBroadcasted(false);
 }
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
@@ -324,6 +351,8 @@ DetectorMessenger::DetectorMessenger(DetectorConstruction* Det) : fDetector(Det)
 DetectorMessenger::~DetectorMessenger()
 {
   delete fSizeYZCmd;
+  delete fSizeYCmd;
+  delete fSizeZCmd;
   delete fNbLayersCmd;
   delete fNbAbsorCmd;
   delete fAbsorCmd;
@@ -345,6 +374,7 @@ DetectorMessenger::~DetectorMessenger()
   delete fEncasementEnableCmd;
   delete fEncasementOuterCmd;
   delete fEncasementWallCmd;
+  delete fCs137SourceEnableCmd;
   delete fDetDir;
   delete fTestemDir;
 }
@@ -355,6 +385,14 @@ void DetectorMessenger::SetNewValue(G4UIcommand* command, G4String newValue)
 {
   if (command == fSizeYZCmd) {
     fDetector->SetCalorSizeYZ(fSizeYZCmd->GetNewDoubleValue(newValue));
+  }
+
+  if (command == fSizeYCmd) {
+    fDetector->SetCalorSizeY(fSizeYCmd->GetNewDoubleValue(newValue));
+  }
+
+  if (command == fSizeZCmd) {
+    fDetector->SetCalorSizeZ(fSizeZCmd->GetNewDoubleValue(newValue));
   }
 
   if (command == fNbLayersCmd) {
@@ -470,6 +508,10 @@ void DetectorMessenger::SetNewValue(G4UIcommand* command, G4String newValue)
 
   if (command == fEncasementWallCmd) {
     fDetector->SetEncasementWallThickness(fEncasementWallCmd->GetNewDoubleValue(newValue));
+  }
+
+  if (command == fCs137SourceEnableCmd) {
+    fDetector->SetCs137SourceEnable(G4UIcmdWithABool::GetNewBoolValue(newValue.c_str()));
   }
 }
 

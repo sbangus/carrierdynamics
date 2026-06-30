@@ -1,0 +1,101 @@
+# PuBe cylindrical neutron + Am-241 4.43 MeV gamma source on the +Z aluminum box face.
+# Geometry: Al box + 4-absorber detector (as in dd-moderator-stack), NO moderators.
+#
+# Two GPS sources share the same cylindrical volume (r = 1 cm, length 4 cm along
+# global +X), centred over the detector on the +Z box face (centre 0 0 22.5 mm).
+# Both emit isotropic (4 pi).
+#
+# Source 1: PuBe neutron spectrum (User histogram, 0 -> 11 MeV CDF).
+# Source 2: mono 4.43 MeV gammas (Am-241 line), intensity 0.54 relative to neutrons.
+#
+# Expected primaries per run (intensity-weighted random selection):
+#   neutrons : 1.5e6  (intensity 1.0)
+#   gammas   : 1.5e6 * 0.54 = 8.1e5  (intensity 0.54)
+#   total    : 2.31e6  =>  /run/beamOn 2310000
+#
+/control/verbose 1
+/run/verbose 1
+#
+/testhadr/det/setNbOfLayers 1
+/testhadr/det/setNbOfAbsor 4
+/testhadr/det/setAbsor 1 G4_Ag        40 nm
+/testhadr/det/setAbsor 2 PNDI-T10 10 um
+/testhadr/det/setAbsor 3 ITO          100 nm
+/testhadr/det/setAbsor 4 QuartzGlass  100 nm
+/testhadr/det/setSizeY 8 mm
+/testhadr/det/setSizeZ 11 mm
+#
+/testhadr/det/setBoxExternal 103 53 25 mm
+/testhadr/det/setBoxWallThickness 1.8 mm
+/testhadr/det/setDetectorStandoff 5 mm
+/testhadr/det/setBoxMaterial G4_Al
+/testhadr/det/setCavityMaterial G4_AIR
+/testhadr/det/setWorldMaterial G4_AIR
+/testhadr/det/setLabSize 2000 2000 2000 mm
+#
+/testhadr/det/setNbOfModeratorLayers 0
+/testhadr/det/setModeratorEnable false
+/testhadr/det/setSourceStandoff 30 mm
+#
+/random/setSeeds 940139001 139940002
+/run/initialize
+#
+/analysis/setFileName PuBeGamma
+#
+# --- Source 1: PuBe neutrons (intensity 1.0) ---
+/gps/source/intensity 1.0
+/gps/particle neutron
+/gps/pos/type Volume
+/gps/pos/shape Cylinder
+/gps/pos/radius 12.5 mm
+/gps/pos/halfz 20 mm
+/gps/pos/centre 0 0 22.5 mm
+/gps/pos/rot1 0 1 0
+/gps/pos/rot2 0 0 1
+/gps/ang/type iso
+/gps/ang/mintheta 0 deg
+/gps/ang/maxtheta 180 deg
+/gps/ene/type User
+/gps/hist/type energy
+/gps/hist/point 0.0  0.0
+/gps/hist/point 0.5  0.01702
+/gps/hist/point 1.0  0.03404
+/gps/hist/point 1.5  0.05107
+/gps/hist/point 2.0  0.06808
+/gps/hist/point 2.5  0.07660
+/gps/hist/point 3.0  0.08510
+/gps/hist/point 3.5  0.09362
+/gps/hist/point 4.0  0.09787
+/gps/hist/point 4.5  0.09362
+/gps/hist/point 5.0  0.08085
+/gps/hist/point 5.5  0.06809
+/gps/hist/point 6.0  0.05532
+/gps/hist/point 6.5  0.04255
+/gps/hist/point 7.0  0.03404
+/gps/hist/point 7.5  0.02553
+/gps/hist/point 8.0  0.02128
+/gps/hist/point 8.5  0.01702
+/gps/hist/point 9.0  0.01277
+/gps/hist/point 9.5  0.01021
+/gps/hist/point 10.0 0.00766
+/gps/hist/point 10.5 0.00511
+/gps/hist/point 11.0 0.00255
+#
+# --- Source 2: 4.43 MeV gammas (intensity 0.54) ---
+/gps/source/add 0.54
+/gps/particle gamma
+/gps/ene/type Mono
+/gps/ene/mono 4.43 MeV
+/gps/pos/type Volume
+/gps/pos/shape Cylinder
+/gps/pos/radius 10 mm
+/gps/pos/halfz 20 mm
+/gps/pos/centre 0 0 22.5 mm
+/gps/pos/rot1 0 1 0
+/gps/pos/rot2 0 0 1
+/gps/ang/type iso
+/gps/ang/mintheta 0 deg
+/gps/ang/maxtheta 180 deg
+#
+/run/printProgress 100000
+/run/beamOn 2310000

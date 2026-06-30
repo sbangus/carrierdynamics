@@ -22,7 +22,8 @@
 /testhadr/det/setAbsor 2 PNDI-T10     75 um
 /testhadr/det/setAbsor 3 ITO         100 nm
 /testhadr/det/setAbsor 4 QuartzGlass 100 um
-/testhadr/det/setSizeYZ 15 mm
+/testhadr/det/setSizeY 8 mm
+/testhadr/det/setSizeZ 11 mm
 #
 /testhadr/det/setBoxExternal 103 53 25 mm
 /testhadr/det/setBoxWallThickness 1.8 mm
@@ -32,15 +33,14 @@
 /testhadr/det/setWorldMaterial G4_AIR
 /testhadr/det/setLabSize 5000 5000 5000 mm
 #
-/testhadr/det/setNbOfModeratorLayers 3
-/testhadr/det/setModeratorLayer 1 G4_Pb 5 mm
-/testhadr/det/setModeratorLayer 2 HeavyWater 85 mm
-/testhadr/det/setModeratorLayer 3 polyethylene 95 mm
+/testhadr/det/setNbOfModeratorLayers 2
+/testhadr/det/setModeratorLayer 1 G4_Pb 3 mm
+/testhadr/det/setModeratorLayer 2 polyethylene 95 mm
 /testhadr/det/setModeratorGap 10 mm
 # Lateral moderator footprint (full X x Y). Independent of bud-box externals.
 # Use "0 0 mm" to revert to box size (103 x 53 mm). Scale per macro as needed.
 /testhadr/det/setModeratorTransverse 200 200 mm
-/testhadr/det/setSourceStandoff 197 mm
+/testhadr/det/setSourceStandoff 110 mm
 #
 /run/numberOfThreads 1
 /run/initialize
@@ -53,8 +53,8 @@
 # Centre z = box half-depth (12.5 mm) + sourceStandoff (200 mm).
 /gps/pos/type Plane
 /gps/pos/shape Rectangle
-/gps/pos/halfx 100 mm
-/gps/pos/halfy 100 mm
+/gps/pos/halfx 53 mm
+/gps/pos/halfy 25 mm
 #/gps/pos/halfx 51.5 mm
 #/gps/pos/halfy 26.5 mm
 /gps/pos/centre 0 0 212.5 mm

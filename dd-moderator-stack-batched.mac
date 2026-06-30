@@ -1,0 +1,102 @@
+# Batched version of dd-moderator-stack.mac: 10 sequential /run/beamOn batches of
+# 400,000,000 events each (4e9 total, kept in safe <2.1e9 per-run G4int chunks).
+#
+# Per batch:
+#   - distinct RNG seed pair
+#   - its own ROOT file: moderator-noPb-batch-01.root ... moderator-noPb-batch-10.root
+#   - one appended block of rows in moderator-batches-noPb.csv
+#
+# ACTIVE geometry (no lead): HeavyWater (95 mm) -> polyethylene (75 mm) on the
+# bud-box +Z face; 10 mm air gap to the GPS plane; 200 x 200 mm footprint/source.
+#
+# Placement rule: sourceStandoff >= sum(layer thicknesses) + moderatorGap
+#   box half-depth = 12.5 mm  =>  GPS centre z = 12.5 mm + sourceStandoff
+#
+#   no-Pb stack: 95 + 75 = 170 mm  + 10 mm gap  =>  sourceStandoff >= 180 mm
+#
+# Pb reference (comment block below): Pb 3 mm + HW 95 mm + PE 75 mm = 173 mm
+#   + 10 mm gap  =>  sourceStandoff >= 183 mm, GPS z = 195.5 mm
+#
+# NOTE: moderator-batches-noPb.csv must not already exist with a different header.
+#
+/control/verbose 1
+/run/verbose 1
+#
+/testhadr/det/setNbOfLayers 1
+/testhadr/det/setNbOfAbsor 4
+/testhadr/det/setAbsor 1 G4_Ag        40 nm
+/testhadr/det/setAbsor 2 PNDI-T10-B4C     30 um
+/testhadr/det/setAbsor 3 ITO         100 nm
+/testhadr/det/setAbsor 4 QuartzGlass 1 um
+/testhadr/det/setSizeY 8 mm
+/testhadr/det/setSizeZ 11 mm
+#
+/testhadr/det/setBoxExternal 103 53 25 mm
+/testhadr/det/setBoxWallThickness 1.8 mm
+/testhadr/det/setDetectorStandoff 10 mm
+/testhadr/det/setBoxMaterial G4_Al
+/testhadr/det/setCavityMaterial G4_AIR
+/testhadr/det/setWorldMaterial G4_AIR
+/testhadr/det/setLabSize 2000 2000 2000 mm
+#
+# --- with Pb (swap comment markers with block below to enable) ---
+#/testhadr/det/setNbOfModeratorLayers 3
+#/testhadr/det/setModeratorLayer 1 G4_Pb 3 mm
+#/testhadr/det/setModeratorLayer 2 HeavyWater 95 mm
+#/testhadr/det/setModeratorLayer 3 polyethylene 75 mm
+#/testhadr/det/setModeratorGap 10 mm
+#/testhadr/det/setModeratorTransverse 200 200 mm
+#/testhadr/det/setSourceStandoff 183 mm
+#
+# --- no Pb (active) ---
+/testhadr/det/setNbOfModeratorLayers 2
+/testhadr/det/setModeratorLayer 1 HeavyWater 95 mm
+/testhadr/det/setModeratorLayer 2 polyethylene 75 mm
+/testhadr/det/setModeratorGap 10 mm
+/testhadr/det/setModeratorTransverse 200 200 mm
+/testhadr/det/setSourceStandoff 180 mm
+#
+/run/initialize
+#
+/gps/particle neutron
+/gps/ene/type Mono
+/gps/ene/mono 2.45 MeV
+#
+# Planar source on the +Z face: rectangle matches moderator transverse (200 x 200 mm).
+# Centre z = box half-depth (12.5 mm) + sourceStandoff (180 mm).
+/gps/pos/type Plane
+/gps/pos/shape Rectangle
+/gps/pos/halfx 100 mm
+/gps/pos/halfy 100 mm
+/gps/pos/centre 0 0 192.5 mm
+#/gps/pos/centre 0 0 195.5 mm 
+#
+# Collimated beam along -Z (toward detector).
+/gps/ang/type iso
+/gps/ang/rot1 1 0 0
+/gps/ang/rot2 0 1 0
+/gps/ang/mintheta 0 deg
+/gps/ang/maxtheta 0 deg
+#
+/testhadr/run/setBatchSummaryEnable true
+/testhadr/run/setBatchSummaryFile moderator-batches-noPb.csv
+/run/printProgress 10000000
+#
+# ---- Batch 01 ----
+/analysis/setFileName moderator-noPb-batch-01
+/testhadr/run/setBatchTag 01
+/random/setSeeds 121737700 913754137
+/run/beamOn 50000000
+#
+# ---- Batch 02 ----
+/analysis/setFileName moderator-noPb-batch-02
+/testhadr/run/setBatchTag 02
+/random/setSeeds 231451093 471209813
+/run/beamOn 50000000
+#
+# ---- Batch 03 ----
+/analysis/setFileName moderator-noPb-batch-03
+/testhadr/run/setBatchTag 03
+/random/setSeeds 320917264 282304519
+/run/beamOn 50000000
+#

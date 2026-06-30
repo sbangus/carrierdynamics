@@ -49,6 +49,7 @@ class EventAction : public G4UserEventAction
     void EndOfEventAction(const G4Event*) override;
 
     void SumEnergy(G4int k, G4double de, G4double dl);
+    void SumPrimaryEnergy(G4int k, G4double de);
     void SumEnergyByParticle(G4int k, const G4String& particleName, G4double de);
     void SumEnergyLeak(G4double eleak, G4int index);
 
@@ -71,10 +72,20 @@ class EventAction : public G4UserEventAction
     void RegisterTrackParticle(G4int trackId, const G4String& particleName);
     G4String GetTrackParticleName(G4int trackId) const;
 
+    // Per-track path-length accumulation: sum of step lengths inside each
+    // absorber for the track currently being transported. Cleared per track in
+    // TrackingAction::PreUserTrackingAction and flushed (into per-particle,
+    // per-absorber histograms) in PostUserTrackingAction. Relies on Geant4
+    // transporting one track to completion before starting the next.
+    void BeginTrackPath() { fTrackPathInAbsor.clear(); }
+    void AddTrackPathLength(G4int absorNum, G4double len);
+    const std::map<G4int, G4double>& GetTrackPathMap() const { return fTrackPathInAbsor; }
+
   private:
     DetectorConstruction* fDetector = nullptr;
 
     G4double fEnergyDeposit[kMaxAbsor];
+    G4double fPrimaryEdep[kMaxAbsor] = {0.};
     G4double fTrackLengthCh[kMaxAbsor];
     G4double fEnergyLeak[2] = {0., 0.};
     std::map<G4String, G4double> fEdepByParticle[kMaxAbsor];
@@ -83,6 +94,7 @@ class EventAction : public G4UserEventAction
 
     std::map<G4int, G4int> fElectronLineage;
     std::map<G4int, G4String> fTrackParticleName;
+    std::map<G4int, G4double> fTrackPathInAbsor;
     G4double fEdepElectronGamma[kMaxAbsor] = {0.};
     G4double fEdepElectronIonic[kMaxAbsor] = {0.};
 };

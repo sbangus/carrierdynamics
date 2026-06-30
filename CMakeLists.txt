@@ -67,7 +67,23 @@ set(Hadr05_SCRIPTS
     dd-moderated-vis.mac
     dd-moderator-stack.mac
     dd-moderator-stack-vis.mac
+    dd-moderator-stack-batched.mac
     test3.mac
+    rotation-test.mac
+    rotation-test-vis.mac
+    perpendicular-test.mac
+    perpendicular-test-vis.mac
+    mixedsource.mac
+    mixedsource-vis.mac
+    Cs-137.mac
+    Cs-137-vis.mac
+    PuBe.mac
+    PuBe-vis.mac
+    PuBeGamma.mac
+    Am-241.mac
+    dd-single-moderator-vis.mac
+    dd-single-moderator.mac
+    Am-241-test.mac
   )
 
 foreach(_script ${Hadr05_SCRIPTS})

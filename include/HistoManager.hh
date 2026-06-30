@@ -48,11 +48,19 @@
 //   2*kMaxAbsor+3                      : Total energy leakage
 //   2*kMaxAbsor+4                      : Total energy released
 //
-// Depth of neutron interactions (elastic, inelastic+capture) per absorber:
+// Depth of selected interactions per absorber:
 //   kDepthHistoBase + (a-1)*kNbProcessCat + c
 // where a = absorber index (1..kMaxAbsor), c = process category (0..kNbProcessCat-1)
+// Categories: 0 neutron hadElastic, 1 neutron inelastic (incl. nCapture),
+//             2 gamma Compton (compt), 3 gamma photoelectric (phot),
+//             4 gamma pair production (conv).
 
-const G4int kNbProcessCat = 2;  // 0: hadElastic, 1: nInelastic (incl. nCapture)
+const G4int kNbProcessCat = 5;
+const G4int kProcCatHadElastic = 0;
+const G4int kProcCatNInelastic = 1;
+const G4int kProcCatCompton = 2;
+const G4int kProcCatPhotoelectric = 3;
+const G4int kProcCatPairProd = 4;
 const G4int kDepthHistoBase = 2 * kMaxAbsor + 5;
 const G4int kDepthHistoEnd  = kDepthHistoBase + kMaxAbsor * kNbProcessCat;
 
@@ -152,7 +160,92 @@ inline G4int EdepElectronIonicId(G4int absIdx) {
     return kEdepElectronIonicBase + (absIdx - 1);
 }
 
-const G4int kMaxHisto = kEdepElectronIonicBase + kMaxAbsor;
+// Capture-gamma line spectrum for gammas born in the moderator stack
+// (nCapture / neutronInelastic): linear 0-3 MeV for H(n,gamma) at 2.223 MeV.
+const G4int kModeratorCaptureGammaKE = kEdepElectronIonicBase + kMaxAbsor;
+
+// KE at birth in moderator, by particle type (summed across moderator layers):
+//   kModeratorSecESpecBase + p
+const G4int kModeratorSecESpecBase = kModeratorCaptureGammaKE + 1;
+
+inline G4int ModeratorSecESpecId(G4int partIdx) {
+    return kModeratorSecESpecBase + partIdx;
+}
+
+// First-generation (ParentID == 1) moderator-born secondaries:
+//   kModeratorFirstGenSecESpecBase + p
+const G4int kModeratorFirstGenSecESpecBase =
+    kModeratorSecESpecBase + kNbFixedParticles;
+
+inline G4int ModeratorFirstGenSecESpecId(G4int partIdx) {
+    return kModeratorFirstGenSecESpecBase + partIdx;
+}
+
+// Per-absorber, per-particle secondary track path length (sum of step lengths
+// while the track is inside the absorber; observable A):
+//   kTrackPathLengthBase + (a-1)*kNbFixedParticles + p
+const G4int kTrackPathLengthBase =
+    kModeratorFirstGenSecESpecBase + kNbFixedParticles;
+
+inline G4int TrackPathLengthId(G4int absIdx, G4int partIdx) {
+    return kTrackPathLengthBase + (absIdx - 1) * kNbFixedParticles + partIdx;
+}
+
+// Total track length per particle type, summed over all volumes (observable B):
+//   kTotalTrackLengthBase + p
+const G4int kTotalTrackLengthBase =
+    kTrackPathLengthBase + kMaxAbsor * kNbFixedParticles;
+
+inline G4int TotalTrackLengthId(G4int partIdx) {
+    return kTotalTrackLengthBase + partIdx;
+}
+
+// Per-absorber e- path length split by ancestry (analog of EdepElectron*Id):
+//   kPathElectronGammaBase + (a-1)  gamma-mediated (compt/phot/conv chains, incl. deltas)
+//   kPathElectronIonicBase + (a-1)  ion/hadronic-mediated (recoils, hIoni, etc.)
+const G4int kPathElectronGammaBase = kTotalTrackLengthBase + kNbFixedParticles;
+const G4int kPathElectronIonicBase = kPathElectronGammaBase + kMaxAbsor;
+
+inline G4int PathElectronGammaId(G4int absIdx) {
+    return kPathElectronGammaBase + (absIdx - 1);
+}
+
+inline G4int PathElectronIonicId(G4int absIdx) {
+    return kPathElectronIonicBase + (absIdx - 1);
+}
+
+// Total (all-volumes) e- track length split by the same ancestry buckets:
+const G4int kTotalPathElectronGamma = kPathElectronIonicBase + kMaxAbsor;
+const G4int kTotalPathElectronIonic = kTotalPathElectronGamma + 1;
+
+// Secondary e- KE-at-birth spectrum split by ancestry (split of SecESpecId(e-),
+// summed across absorbers): gamma-mediated (Compton/photo/pair) vs ion/hadronic.
+const G4int kSecESpecElectronGamma = kTotalPathElectronIonic + 1;
+const G4int kSecESpecElectronIonic = kSecESpecElectronGamma + 1;
+
+// First-generation (ParentID == 1) secondary e- KE-at-birth split by ancestry
+// (split of FirstGenSecESpecId(e-)):
+const G4int kFirstGenSecESpecElectronGamma = kSecESpecElectronIonic + 1;
+const G4int kFirstGenSecESpecElectronIonic = kFirstGenSecESpecElectronGamma + 1;
+
+// Primary-particle observables (ParentID == 0; particle-type agnostic):
+//   kPrimaryPathLengthBase + (a-1)  path length inside absorber a (per primary track)
+//   kTotalPrimaryPathLength         full track length across all volumes (per primary track)
+//   kPrimaryEdepBase + (a-1)        Edep in absorber a summed per event (primary steps only)
+const G4int kPrimaryPathLengthBase = kFirstGenSecESpecElectronIonic + 1;
+const G4int kTotalPrimaryPathLength = kPrimaryPathLengthBase + kMaxAbsor;
+
+inline G4int PrimaryPathLengthId(G4int absIdx) {
+    return kPrimaryPathLengthBase + (absIdx - 1);
+}
+
+const G4int kPrimaryEdepBase = kTotalPrimaryPathLength + 1;
+
+inline G4int PrimaryEdepId(G4int absIdx) {
+    return kPrimaryEdepBase + (absIdx - 1);
+}
+
+const G4int kMaxHisto = kPrimaryEdepBase + kMaxAbsor;
 
 // Creator-process categories for secondary-birth run summary (Run::PrintSecondaryBirthSummary).
 const G4int kNbSecCreatorCat = 5;  // hadronic, em_ion, em_photon, em_other, other

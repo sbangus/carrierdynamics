@@ -1,0 +1,47 @@
+# Thin-film PNDI: 30 um along the beam, 15 mm x 15 mm transverse (setSizeYZ).
+# Standard stack orientation; compare with rotation-test.mac (15 mm deep, 30 um face).
+# No moderators; bare calorimeter in air (no aluminum bud box).
+#
+# Planar source matches PNDI transverse extent (15 mm x 15 mm = setSizeYZ).
+#
+/control/verbose 1
+/run/verbose 1
+#
+/testhadr/det/setNbOfLayers 1
+/testhadr/det/setNbOfAbsor 1
+/testhadr/det/setAbsor 1 PNDI-T10 30 um
+/testhadr/det/setSizeY 15 mm
+/testhadr/det/setSizeZ 50 mm
+#
+/testhadr/det/setBoxExternal 103 53 25 mm
+/testhadr/det/setBoxWallThickness 0 mm
+/testhadr/det/setEncasementEnable false
+/testhadr/det/setCavityMaterial G4_AIR
+/testhadr/det/setWorldMaterial G4_AIR
+/testhadr/det/setLabSize 2000 2000 2000 mm
+#
+/testhadr/det/setNbOfModeratorLayers 0
+/testhadr/det/setModeratorEnable false
+/testhadr/det/setSourceStandoff 100 mm
+#
+/random/setSeeds 121757800 917654137
+/run/initialize
+#
+/gps/particle neutron
+/gps/ene/type Mono
+/gps/ene/mono 2.45 MeV
+#
+/gps/pos/type Plane
+/gps/pos/shape Rectangle
+/gps/pos/halfx 25 mm
+/gps/pos/halfy 7.5 mm
+/gps/pos/centre 0 0 112.5 mm
+#
+/gps/ang/type iso
+/gps/ang/rot1 1 0 0
+/gps/ang/rot2 0 1 0
+/gps/ang/mintheta 0 deg
+/gps/ang/maxtheta 0 deg
+#
+/run/printProgress 1000000
+/run/beamOn 10000000

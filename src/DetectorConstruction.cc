@@ -30,6 +30,8 @@
 
 #include "DetectorMessenger.hh"
 
+#include <cmath>
+
 #include "G4Box.hh"
 #include "G4GeometryManager.hh"
 #include "G4Isotope.hh"
@@ -41,8 +43,11 @@
 #include "G4PVReplica.hh"
 #include "G4PhysicalConstants.hh"
 #include "G4PhysicalVolumeStore.hh"
+#include "G4Polyhedra.hh"
 #include "G4ProductionCuts.hh"
 #include "G4Region.hh"
+#include "G4SubtractionSolid.hh"
+#include "G4Tubs.hh"
 #include "G4RunManager.hh"
 #include "G4SolidStore.hh"
 #include "G4SubtractionSolid.hh"
@@ -90,6 +95,8 @@ DetectorConstruction::DetectorConstruction()
   fAbsorThickness[4] = 100 * micrometer;
   fNbOfLayers = 1;
   fCalorSizeYZ = 1 * mm;
+  fCalorSizeY = 1 * mm;
+  fCalorSizeZ = 1 * mm;
   ComputeCalorParameters();
 
   // Bud box (aluminum) external dimensions and wall thickness.
@@ -301,7 +308,7 @@ void DetectorConstruction::DefineMaterials()
   // Hydrogen is wired as TS_H_of_Polyethylene so the bound-atom
   // S(alpha,beta) thermal-scattering kernel (n < ~4 eV) is used in this
   // organic material, consistent with PNDI-T10 / PNDI-T10-B4C.
-  G4Material* polyethylene = new G4Material("polyethylene", density = 0.94 * g / cm3, ncomponents = 2);
+  G4Material* polyethylene = new G4Material("polyethylene", density = 0.93 * g / cm3, ncomponents = 2);
   polyethylene->AddElement(C, natoms = 2);
   polyethylene->AddElement(H_TS_Poly, natoms = 4);
 
@@ -416,6 +423,17 @@ void DetectorConstruction::ComputeCalorParameters()
     fLayerThickness += fAbsorThickness[iAbs];
   }
   fCalorThickness = fNbOfLayers * fLayerThickness;
+}
+
+//....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
+
+G4bool DetectorConstruction::IsModeratorLogical(const G4LogicalVolume* lv) const
+{
+  if (lv == nullptr) return false;
+  for (G4int i = 1; i <= kMaxModeratorLayers; ++i) {
+    if (lv == fLogicModeratorLayer[i]) return true;
+  }
+  return false;
 }
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
@@ -646,7 +664,7 @@ G4VPhysicalVolume* DetectorConstruction::Construct()
   G4double calorCenterZ = frontZ - 0.5 * fCalorThickness;
 
   fSolidCalor = new G4Box("Calorimeter",
-                          fCalorThickness / 2, fCalorSizeYZ / 2, fCalorSizeYZ / 2);
+                          fCalorThickness / 2, fCalorSizeY / 2, fCalorSizeZ / 2);
   fLogicCalor = new G4LogicalVolume(fSolidCalor, fCavityMaterial, "Calorimeter");
   fPhysiCalor = new G4PVPlacement(fCalorRotation,
                                   G4ThreeVector(0., 0., calorCenterZ),
@@ -658,7 +676,7 @@ G4VPhysicalVolume* DetectorConstruction::Construct()
   // tile the calorimeter, so cavity material here is only a placeholder
   // for any unfilled internal volume)
   //
-  fSolidLayer = new G4Box("Layer", fLayerThickness / 2, fCalorSizeYZ / 2, fCalorSizeYZ / 2);
+  fSolidLayer = new G4Box("Layer", fLayerThickness / 2, fCalorSizeY / 2, fCalorSizeZ / 2);
   fLogicLayer = new G4LogicalVolume(fSolidLayer, fCavityMaterial, "Layer");
   if (fNbOfLayers > 1) {
     fPhysiLayer =
@@ -674,7 +692,7 @@ G4VPhysicalVolume* DetectorConstruction::Construct()
   G4double xfront = -0.5 * fLayerThickness;
   for (G4int k = 1; k <= fNbOfAbsor; ++k) {
     fSolidAbsor[k] = new G4Box("Absorber",
-                               fAbsorThickness[k] / 2, fCalorSizeYZ / 2, fCalorSizeYZ / 2);
+                               fAbsorThickness[k] / 2, fCalorSizeY / 2, fCalorSizeZ / 2);
 
     fLogicAbsor[k] = new G4LogicalVolume(fSolidAbsor[k], fAbsorMaterial[k],
                                          fAbsorMaterial[k]->GetName());
@@ -696,13 +714,58 @@ G4VPhysicalVolume* DetectorConstruction::Construct()
   const G4double monitorGap = 1. * nm;
   G4double monitorCenterZ = frontZ + monitorGap + 0.5 * monitorThickness;
 
+  // Lateral extent in global X-Y matches the rotated calorimeter front face
+  // (local Z -> global X, local Y -> global Y after rotateY(+90 deg)).
   fSolidMonitor = new G4Box("MonitorFront",
-                            fCalorSizeYZ / 2, fCalorSizeYZ / 2, monitorThickness / 2);
+                            fCalorSizeZ / 2, fCalorSizeY / 2, monitorThickness / 2);
   fLogicMonitor = new G4LogicalVolume(fSolidMonitor, fCavityMaterial, "MonitorFront");
   fPhysiMonitor = new G4PVPlacement(0,
                                     G4ThreeVector(0., 0., monitorCenterZ),
                                     fLogicMonitor, "MonitorFront",
                                     calorMother, false, 0);
+
+  //
+  // Cs-137 check source envelope: regular hexagonal prism (local axis Z, then
+  // rotated +90 deg about Y so the axis lies along global +X). phiStart = 30 deg
+  // (half of 360/6) orients a rectangular side face (10 mm x 7 mm) with its
+  // outward normal along local +X; after rotateY(+90 deg) that face lies in the
+  // detector plane (XY) with its bottom at the bud-box +Z exterior
+  // (z = zOuterPlusZ). GPS: /gps/pos/confine Cs137Source.
+  //
+  if (fCs137SourceEnable) {
+    constexpr G4double kHexSide = 7. * mm;
+    constexpr G4double kHalfLen = 5. * mm;       // 1 cm total length along +/- X
+    constexpr G4double kBoreRadius = 4. * mm;    // 0.4 cm hollow core
+    const G4double apothem = kHexSide * std::cos(30. * deg);
+
+    const G4double zOuterPlusZ = 0.5 * fBoxExternalZ
+                               + (fEncasementEnable ? fEncasementWallThickness : 0.);
+    // Side face at local +X (distance apothem) maps to global z = centreZ - apothem
+    // after rotateY(+90 deg). Set that face on the box +Z exterior.
+    const G4double centreZ = zOuterPlusZ + apothem;
+
+    G4double zPlane[] = {-kHalfLen, kHalfLen};
+    G4double rInner[] = {0., 0.};
+    G4double rOuter[] = {apothem, apothem};
+
+    // phiStart = 30 deg: side face normal along local +X (phiStart = 0 puts a
+    // vertex on +X instead of the 10 mm x 7 mm face).
+    auto* hex = new G4Polyhedra("Cs137Hex", 30. * deg, twopi, 6, 2, zPlane, rInner,
+                                rOuter);
+    auto* bore = new G4Tubs("Cs137Bore", 0., kBoreRadius, kHalfLen + 1. * nm, 0., twopi);
+    fSolidCs137Source = new G4SubtractionSolid("Cs137SourceSolid", hex, bore);
+    fLogicCs137Source =
+      new G4LogicalVolume(fSolidCs137Source, fWorldMaterial, "Cs137Source");
+
+    if (fCs137SourceRotation == nullptr) {
+      fCs137SourceRotation = new G4RotationMatrix();
+      fCs137SourceRotation->rotateY(90. * deg);
+    }
+    fPhysiCs137Source = new G4PVPlacement(fCs137SourceRotation,
+                                          G4ThreeVector(0., 0., centreZ),
+                                          fLogicCs137Source, "Cs137Source",
+                                          fLogicWorld, false, 0);
+  }
 
   DefineRegionsAndCuts();
 
@@ -840,8 +903,10 @@ void DetectorConstruction::PrintCalorParameters()
          << G4BestUnit(totLength, "Length") << " = " << std::setw(wid) << totRadl << " Radl "
          << " = " << std::setw(wid) << totNuclear << " NuclearInteractionLength " << G4endl;
 
-  G4cout << "                     transverse sizeYZ = " << std::setw(wid)
-         << G4BestUnit(fCalorSizeYZ, "Length") << G4endl;
+  G4cout << "                     transverse sizeY  = " << std::setw(wid)
+         << G4BestUnit(fCalorSizeY, "Length") << G4endl;
+  G4cout << "                     transverse sizeZ  = " << std::setw(wid)
+         << G4BestUnit(fCalorSizeZ, "Length") << G4endl;
   G4cout << "-------------------------------------------------------------\n";
 
   G4cout << "\n Bud box (external) : "
@@ -870,10 +935,32 @@ void DetectorConstruction::PrintCalorParameters()
   else {
     G4cout << " Polycarbonate encasement : disabled" << G4endl;
   }
+  if (fPhysiCs137Source != nullptr) {
+    const G4ThreeVector pos = fPhysiCs137Source->GetTranslation();
+    G4cout << " Cs-137 check source : enabled   hex side = 7 mm   length = 1 cm"
+           << " (axis || global +X)   bore radius = 4 mm"
+           << "   flat face on box +Z at z = "
+           << G4BestUnit(0.5 * fBoxExternalZ
+                        + (fEncasementEnable ? fEncasementWallThickness : 0.),
+                        "Length")
+           << "   centre = (0, 0, "
+           << G4BestUnit(pos.z(), "Length") << ")" << G4endl;
+  }
+  else {
+    G4cout << " Cs-137 check source : disabled" << G4endl;
+  }
   if (fPhysiModeratorLayer[1] != nullptr) {
     G4double stackSum = 0.;
+    const G4double modX = (fModeratorFullX > 0. ? fModeratorFullX : fBoxExternalX);
+    const G4double modY = (fModeratorFullY > 0. ? fModeratorFullY : fBoxExternalY);
     G4cout << " Moderator stack : enabled   upstream gap (GPS side) = "
            << G4BestUnit(fModeratorUpstreamGap, "Length") << G4endl;
+    G4cout << "   transverse (full X x Y) = " << G4BestUnit(modX, "Length") << " x "
+           << G4BestUnit(modY, "Length");
+    if (fModeratorFullX <= 0. && fModeratorFullY <= 0.) {
+      G4cout << "  (bud-box externals)";
+    }
+    G4cout << G4endl;
     for (G4int i = 1; i <= kMaxModeratorLayers; ++i) {
       if (fPhysiModeratorLayer[i] == nullptr) continue;
       G4double dz = fModeratorLayerThick[i];
@@ -1019,6 +1106,10 @@ void DetectorConstruction::SetSourceStandoff(G4double d)
   }
   fSourceStandoff = d;
 }
+
+//....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
+
+void DetectorConstruction::SetCs137SourceEnable(G4bool on) { fCs137SourceEnable = on; }
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
 
@@ -1217,14 +1308,40 @@ void DetectorConstruction::SetAbsorThickness(G4int ival, G4double val)
 
 void DetectorConstruction::SetCalorSizeYZ(G4double val)
 {
-  // change the transverse size
+  // Square transverse cross-section (sets both Y and Z).
   //
   if (val <= DBL_MIN) {
-    G4cout << "\n --->warning from SetfCalorSizeYZ: thickness " << val
+    G4cout << "\n --->warning from SetCalorSizeYZ: size " << val
            << " out of range. Command refused" << G4endl;
     return;
   }
   fCalorSizeYZ = val;
+  fCalorSizeY = val;
+  fCalorSizeZ = val;
+}
+
+//....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
+
+void DetectorConstruction::SetCalorSizeY(G4double val)
+{
+  if (val <= DBL_MIN) {
+    G4cout << "\n --->warning from SetCalorSizeY: size " << val
+           << " out of range. Command refused" << G4endl;
+    return;
+  }
+  fCalorSizeY = val;
+}
+
+//....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
+
+void DetectorConstruction::SetCalorSizeZ(G4double val)
+{
+  if (val <= DBL_MIN) {
+    G4cout << "\n --->warning from SetCalorSizeZ: size " << val
+           << " out of range. Command refused" << G4endl;
+    return;
+  }
+  fCalorSizeZ = val;
 }
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......

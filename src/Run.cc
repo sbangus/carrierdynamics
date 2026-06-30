@@ -37,9 +37,171 @@
 #include "G4Threading.hh"
 #include "G4UnitsTable.hh"
 
+#include <algorithm>
 #include <fstream>
 #include <iomanip>
 #include <string>
+
+namespace {
+
+// Per-particle log binning for secondary KE-at-birth spectra (absorber and
+// moderator). Ranges tuned to typical DD / moderation / (n,gamma) physics.
+void ConfigureSecondaryESpec(G4AnalysisManager* analysis, G4int ih, G4int partIdx)
+{
+  G4int nbins = 100;
+  G4double vmin = 1.e-2 * MeV;
+  G4double vmax = 2.e1 * MeV;
+  switch (partIdx) {
+    case 4:  // gamma
+      nbins = 200;
+      vmin = 1.e-3 * MeV;
+      vmax = 5. * MeV;
+      break;
+    case 5:  // e-
+      nbins = 150;
+      vmin = 1.e-3 * MeV;
+      vmax = 20. * MeV;
+      break;
+    case 3:  // proton
+      nbins = 100;
+      vmin = 50. * keV;
+      vmax = 10. * MeV;
+      break;
+    case 0:
+    case 1:
+    case 2:  // alpha, Li7, Li6
+      nbins = 150;
+      vmin = 100. * keV;
+      vmax = 5. * MeV;
+      break;
+    case 6:  // C12
+      nbins = 100;
+      vmin = 1. * MeV;
+      vmax = 20. * MeV;
+      break;
+    default:
+      break;
+  }
+  analysis->SetH1(ih, nbins, vmin, vmax, "MeV", "none", "log");
+}
+
+// Upper bound for per-absorber path-length histos: 10x layer thickness, floored
+// at 10 nm and capped at 1 mm so thin layers are not drowned by empty axis.
+G4double AbsorberTrackLengthVmax(G4double thickness)
+{
+  constexpr G4double kCap = 1. * mm;
+  constexpr G4double kFloor = 10. * nm;
+  return std::min(kCap, std::max(10. * thickness, kFloor));
+}
+
+// Per-particle log vmin/nbins for path-length histos (bounds in mm).
+void TrackLengthParticleBinning(G4int partIdx, G4int& nbins, G4double& vmin)
+{
+  nbins = 120;
+  vmin = 1.e-3 * mm;  // 1 um
+  switch (partIdx) {
+    case 0:
+    case 1:
+    case 2:
+    case 6:  // alpha, Li7, Li6, C12 (heavy ions: short, sub-mm ranges)
+      nbins = 150;
+      vmin = 1.e-5 * mm;  // 10 nm
+      break;
+    case 3:  // proton
+      nbins = 120;
+      vmin = 1.e-4 * mm;  // 100 nm
+      break;
+    case 4:  // gamma
+      nbins = 120;
+      vmin = 1.e-2 * mm;  // 10 um
+      break;
+    case 5:  // e-
+      nbins = 150;
+      // 1 um default collides with AbsorberTrackLengthVmax on 100 nm layers
+      // (vmax capped at 1 um), which leaves g4tools unable to stream the histo.
+      vmin = 1.e-5 * mm;  // 10 nm
+      break;
+    default:
+      break;
+  }
+}
+
+// Observable A: path length accumulated inside one absorber (per track).
+void ConfigureAbsorberTrackLength(G4AnalysisManager* analysis, G4int ih,
+                                  G4int partIdx, G4double absorberThickness)
+{
+  G4int nbins = 120;
+  G4double vmin = 1.e-3 * mm;
+  TrackLengthParticleBinning(partIdx, nbins, vmin);
+
+  G4double vmax = AbsorberTrackLengthVmax(absorberThickness);
+  constexpr G4double kMinLogSpan = 1.e-2;
+  if (vmin >= vmax) {
+    vmin = vmax * kMinLogSpan;
+  }
+
+  analysis->SetH1(ih, nbins, vmin, vmax, "mm", "none", "log");
+}
+
+// Observable B: full track length across all volumes (per track).
+void ConfigureTotalTrackLength(G4AnalysisManager* analysis, G4int ih, G4int partIdx)
+{
+  G4int nbins = 120;
+  G4double vmin = 1.e-3 * mm;
+  G4double vmax = 1.e2 * mm;  // 10 cm
+  TrackLengthParticleBinning(partIdx, nbins, vmin);
+
+  switch (partIdx) {
+    case 0:
+    case 1:
+    case 2:
+    case 6:
+      vmax = 0.1 * mm;  // 100 um
+      break;
+    case 3:
+      vmax = 1. * mm;
+      break;
+    case 4:
+      vmax = 5.e2 * mm;  // 50 cm
+      break;
+    case 5:
+      vmax = 50. * mm;
+      break;
+    default:
+      break;
+  }
+
+  analysis->SetH1(ih, nbins, vmin, vmax, "mm", "none", "log");
+}
+
+// e- path length split by ancestry (gamma- vs ion/hadronic-mediated). Explicit
+// log bounds in mm; the caller picks the range appropriate to the lineage.
+void ConfigureElectronLineagePath(G4AnalysisManager* analysis, G4int ih,
+                                  G4double vmin, G4double vmax, G4int nbins)
+{
+  if (vmin >= vmax) vmin = vmax * 1.e-3;
+  analysis->SetH1(ih, nbins, vmin, vmax, "mm", "none", "log");
+}
+
+// Primary-particle path length inside one absorber (per track, any primary type).
+void ConfigurePrimaryAbsorberPath(G4AnalysisManager* analysis, G4int ih,
+                                  G4double absorberThickness)
+{
+  G4int nbins = 150;
+  G4double vmin = 1.e-5 * mm;
+  G4double vmax = AbsorberTrackLengthVmax(absorberThickness);
+  constexpr G4double kMinLogSpan = 1.e-2;
+  if (vmin >= vmax) vmin = vmax * kMinLogSpan;
+  analysis->SetH1(ih, nbins, vmin, vmax, "mm", "none", "log");
+}
+
+// Primary-particle total track length across all volumes (per track).
+void ConfigurePrimaryTotalPath(G4AnalysisManager* analysis, G4int ih)
+{
+  analysis->SetH1(ih, 150, 1.e-5 * mm, 1.e3 * mm, "mm", "none", "log");
+}
+
+}  // namespace
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
 
@@ -142,11 +304,10 @@ Run::Run(DetectorConstruction* det) : fDetector(det)
   }
 
   // Energy spectrum of each secondary type (one per particle, summed across
-  // absorbers). Span 10 keV .. 20 MeV log-binned to cover ions, gammas, e-.
-  // Bounds in internal units so the axis reads in MeV.
+  // absorbers). Per-particle log ranges tuned in ConfigureSecondaryESpec().
   for (G4int p = 0; p < kNbFixedParticles; p++) {
     G4int ih = SecESpecId(p);
-    analysis->SetH1(ih, 100, 1.e-2 * MeV, 2.e1 * MeV, "MeV", "none", "log");
+    ConfigureSecondaryESpec(analysis, ih, p);
     analysis->SetH1Activation(ih, true);
   }
 
@@ -154,9 +315,29 @@ Run::Run(DetectorConstruction* det) : fDetector(det)
   // one histogram per fixed particle type, summed across absorbers.
   for (G4int p = 0; p < kNbFixedParticles; p++) {
     G4int ih = FirstGenSecESpecId(p);
-    analysis->SetH1(ih, 100, 1.e-2 * MeV, 2.e1 * MeV, "MeV", "none", "linear");
+    ConfigureSecondaryESpec(analysis, ih, p);
     analysis->SetH1Activation(ih, true);
   }
+
+  // e- KE-at-birth spectrum split by ancestry, the KE analog of the e- Edep and
+  // path-length lineage splits. The two lineages span different energy scales
+  // (investigation, 30 um PNDI-T10-B4C, mixed n/gamma source):
+  //   - gamma-mediated: ~30 eV .. ~2 MeV (Compton/photo e- off the 0.5/2 MeV
+  //     gammas); median ~150 eV with an energetic tail.
+  //   - ion/hadronic-mediated: delta rays off recoil ions; peak ~0.27 keV,
+  //     essentially all below ~4 keV.
+  // vmin is dropped to 10 eV so the sub-keV bulk (otherwise lost to underflow
+  // with the 1 keV all-e- ConfigureSecondaryESpec floor) is resolved. The
+  // first-generation ion-mediated histogram is expected to stay ~empty:
+  // primaries are gammas/neutrons and neutrons do not directly produce e-.
+  analysis->SetH1(kSecESpecElectronGamma, 150, 1.e-5 * MeV, 3. * MeV, "MeV", "none", "log");
+  analysis->SetH1Activation(kSecESpecElectronGamma, true);
+  analysis->SetH1(kSecESpecElectronIonic, 150, 1.e-5 * MeV, 1.e-2 * MeV, "MeV", "none", "log");
+  analysis->SetH1Activation(kSecESpecElectronIonic, true);
+  analysis->SetH1(kFirstGenSecESpecElectronGamma, 150, 1.e-5 * MeV, 3. * MeV, "MeV", "none", "log");
+  analysis->SetH1Activation(kFirstGenSecESpecElectronGamma, true);
+  analysis->SetH1(kFirstGenSecESpecElectronIonic, 150, 1.e-5 * MeV, 1.e-2 * MeV, "MeV", "none", "log");
+  analysis->SetH1Activation(kFirstGenSecESpecElectronIonic, true);
 
   // Neutron spectrum entering the detector after environment interactions.
   // Log binning from 1 meV to 20 MeV, axis labelled in eV (matches the
@@ -177,12 +358,85 @@ Run::Run(DetectorConstruction* det) : fDetector(det)
                   1. * keV, 2.e1 * MeV, "MeV", "none", "log");
   analysis->SetH1Activation(kDetectorFrontGammaKE, true);
 
+  // Per-event e- Edep split by ancestry (gamma- vs ion/hadronic-mediated). Both
+  // span a wide dynamic range and are dominated by low-energy deposits, so log
+  // binning is used (vs. the linear all-e- histogram EdepByParticleId, id 150).
+  // Investigation (30 um PNDI-T10-B4C, mixed n/gamma source):
+  //   - gamma-mediated: peak ~0.5 keV, tail to ~0.15 MeV (Compton/photo e- that
+  //     mostly traverse the thin layer depositing little).
+  //   - ion/hadronic-mediated: peak ~23 keV (B-10(n,alpha)Li-7 delta-ray sum),
+  //     tail to ~0.5 MeV.
   for (G4int k = 1; k <= nAbs; k++) {
-    analysis->SetH1(EdepElectronGammaId(k), 100, 0., 2.5, "MeV");
+    analysis->SetH1(EdepElectronGammaId(k), 100, 1.e-5 * MeV, 0.2 * MeV, "MeV", "none", "log");
     analysis->SetH1Activation(EdepElectronGammaId(k), true);
-    analysis->SetH1(EdepElectronIonicId(k), 100, 0., 2.5, "MeV");
+    analysis->SetH1(EdepElectronIonicId(k), 100, 1.e-5 * MeV, 0.5 * MeV, "MeV", "none", "log");
     analysis->SetH1Activation(EdepElectronIonicId(k), true);
   }
+
+  // Moderator-born secondary spectra (activated only when a stack is placed).
+  const G4bool hasModerators = fDetector->HasModeratorStack();
+  analysis->SetH1(kModeratorCaptureGammaKE, 300, 0., 3.0, "MeV");
+  analysis->SetH1Activation(kModeratorCaptureGammaKE, hasModerators);
+  for (G4int p = 0; p < kNbFixedParticles; p++) {
+    ConfigureSecondaryESpec(analysis, ModeratorSecESpecId(p), p);
+    analysis->SetH1Activation(ModeratorSecESpecId(p), hasModerators);
+    ConfigureSecondaryESpec(analysis, ModeratorFirstGenSecESpecId(p), p);
+    analysis->SetH1Activation(ModeratorFirstGenSecESpecId(p), hasModerators);
+  }
+
+  // Secondary track path length per absorber, per particle type (observable A),
+  // and total track length per particle across all volumes (observable B).
+  for (G4int k = 1; k <= nAbs; k++) {
+    const G4double thickness = fDetector->GetAbsorThickness(k);
+    for (G4int p = 0; p < kNbFixedParticles; p++) {
+      G4int ih = TrackPathLengthId(k, p);
+      ConfigureAbsorberTrackLength(analysis, ih, p, thickness);
+      analysis->SetH1Activation(ih, true);
+    }
+  }
+  for (G4int p = 0; p < kNbFixedParticles; p++) {
+    G4int ih = TotalTrackLengthId(p);
+    ConfigureTotalTrackLength(analysis, ih, p);
+    analysis->SetH1Activation(ih, true);
+  }
+
+  // e- path length split by ancestry (gamma- vs ion/hadronic-mediated), the
+  // path-length analog of the e- Edep lineage split. The two lineages live on
+  // very different length scales, so they get different ranges:
+  //   - gamma-mediated: energetic Compton/photo/pair e- (um .. cm), scaled like
+  //     the all-e- path-length histograms.
+  //   - ion/hadronic-mediated: low-energy delta rays from heavily-ionizing
+  //     recoil ions (alpha/Li7/proton). Ranges peak near ~6 nm, so the axis is
+  //     fixed at the nm scale (1 nm .. 1 um per absorber, 1 nm .. 100 um total).
+  // vmin is dropped to 1 nm for all four so the sub-micron delta-ray population
+  // (otherwise lost to underflow) is resolved.
+  const G4double kElectronPathVmin = 1.e-6 * mm;  // 1 nm
+  for (G4int k = 1; k <= nAbs; k++) {
+    const G4double thickness = fDetector->GetAbsorThickness(k);
+    ConfigureElectronLineagePath(analysis, PathElectronGammaId(k),
+                                 kElectronPathVmin, AbsorberTrackLengthVmax(thickness), 160);
+    analysis->SetH1Activation(PathElectronGammaId(k), true);
+    ConfigureElectronLineagePath(analysis, PathElectronIonicId(k),
+                                 kElectronPathVmin, 1.e-3 * mm, 150);
+    analysis->SetH1Activation(PathElectronIonicId(k), true);
+  }
+  ConfigureElectronLineagePath(analysis, kTotalPathElectronGamma,
+                               kElectronPathVmin, 50. * mm, 160);
+  analysis->SetH1Activation(kTotalPathElectronGamma, true);
+  ConfigureElectronLineagePath(analysis, kTotalPathElectronIonic,
+                               kElectronPathVmin, 1.e-1 * mm, 150);
+  analysis->SetH1Activation(kTotalPathElectronIonic, true);
+
+  // Primary-particle path length (per track) and Edep (per event, primary steps).
+  for (G4int k = 1; k <= nAbs; k++) {
+    ConfigurePrimaryAbsorberPath(analysis, PrimaryPathLengthId(k),
+                                 fDetector->GetAbsorThickness(k));
+    analysis->SetH1Activation(PrimaryPathLengthId(k), true);
+    analysis->SetH1(PrimaryEdepId(k), 100, 0., 20., "MeV");
+    analysis->SetH1Activation(PrimaryEdepId(k), true);
+  }
+  ConfigurePrimaryTotalPath(analysis, kTotalPrimaryPathLength);
+  analysis->SetH1Activation(kTotalPrimaryPathLength, true);
 
   // Run-level scalar histograms: energy flow, total Edep, leakage, released.
   // IDs 41..44 (= 2*kMaxAbsor+1 .. 2*kMaxAbsor+4 when kMaxAbsor=20).
@@ -523,8 +777,7 @@ void Run::EndOfRun()
   // the integrated flux (fluence) from the gamma crossing count and the
   // monitor face area.
   {
-    const G4double side = fDetector->GetCalorSizeYZ();  // monitor transverse edge
-    const G4double areaCm2 = (side * side) / cm2;
+    const G4double areaCm2 = fDetector->GetCalorTransverseArea() / cm2;
     const G4double meanPerEvent =
         (nEvt > 0) ? G4double(fGammaAtDetectorFace) / G4double(nEvt) : 0.;
 
@@ -542,6 +795,19 @@ void Run::EndOfRun()
     }
     G4cout << "   energy spectrum         : histogram id "
            << kDetectorFrontGammaKE << " (1 keV - 20 MeV, log) in Hadr05.root\n";
+    G4cout << "------------------------------------------------------------\n";
+  }
+
+  if (fDetector->HasModeratorStack()) {
+    G4cout << " Moderator-born secondary spectra (KE at birth in moderator stack):\n";
+    G4cout << "   capture-gamma line hist : id " << kModeratorCaptureGammaKE
+           << " (0-3 MeV linear, 300 bins)\n";
+    G4cout << "   all secondary types     : ids " << kModeratorSecESpecBase << "-"
+           << (kModeratorSecESpecBase + kNbFixedParticles - 1)
+           << " (per-particle log ranges)\n";
+    G4cout << "   first-generation only   : ids " << kModeratorFirstGenSecESpecBase
+           << "-" << (kModeratorFirstGenSecESpecBase + kNbFixedParticles - 1)
+           << " (per-particle log ranges)\n";
     G4cout << "------------------------------------------------------------\n";
   }
 
@@ -663,7 +929,8 @@ void Run::AppendBatchSummaryCsv()
   if (nEvt <= 0) return;
 
   static const char* kExpectedHdr =
-    "run_id,n_events,batch_tag,absorber,material,particle,total_edep_MeV";
+    "run_id,n_events,batch_tag,absorber,material,particle,total_edep_MeV,"
+    "gammas_crossing_face";
 
   std::ifstream probe(fBatchCsvPath.c_str());
   G4bool writeHeader = true;
@@ -696,18 +963,23 @@ void Run::AppendBatchSummaryCsv()
 
   out << std::scientific << std::setprecision(17);
   if (writeHeader) {
-    out << "run_id,n_events,batch_tag,absorber,material,particle,total_edep_MeV\n";
+    out << "run_id,n_events,batch_tag,absorber,material,particle,total_edep_MeV,"
+           "gammas_crossing_face\n";
   }
 
   const G4int runId = GetRunID();
   const G4double invMeV = 1. / MeV;
 
+  // The gamma-crossing count is a single per-batch scalar; it is repeated on
+  // every (absorber, particle) row of this batch so each batch's value can be
+  // read directly or de-duplicated when pivoting the long-format table.
   for (G4int k = 1; k <= fDetector->GetNbOfAbsor(); ++k) {
     const G4String& matName = fDetector->GetAbsorMaterial(k)->GetName();
     for (const auto& entry : fEdepByParticle[k]) {
       const G4double totalMeV = entry.second * invMeV;
       out << runId << ',' << nEvt << ',' << CsvEscape(fBatchCsvTag) << ',' << k << ','
-          << CsvEscape(matName) << ',' << CsvEscape(entry.first) << ',' << totalMeV << '\n';
+          << CsvEscape(matName) << ',' << CsvEscape(entry.first) << ',' << totalMeV << ','
+          << fGammaAtDetectorFace << '\n';
     }
   }
 }

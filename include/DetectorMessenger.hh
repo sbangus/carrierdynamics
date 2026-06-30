@@ -59,6 +59,8 @@ class DetectorMessenger : public G4UImessenger
     G4UIdirectory* fDetDir = nullptr;
 
     G4UIcmdWithADoubleAndUnit* fSizeYZCmd = nullptr;
+    G4UIcmdWithADoubleAndUnit* fSizeYCmd = nullptr;
+    G4UIcmdWithADoubleAndUnit* fSizeZCmd = nullptr;
     G4UIcmdWithAnInteger* fNbLayersCmd = nullptr;
     G4UIcmdWithAnInteger* fNbAbsorCmd = nullptr;
     G4UIcommand* fAbsorCmd = nullptr;
@@ -83,6 +85,7 @@ class DetectorMessenger : public G4UImessenger
     G4UIcmdWithABool* fEncasementEnableCmd = nullptr;
     G4UIcmdWith3VectorAndUnit* fEncasementOuterCmd = nullptr;
     G4UIcmdWithADoubleAndUnit* fEncasementWallCmd = nullptr;
+    G4UIcmdWithABool* fCs137SourceEnableCmd = nullptr;
 };
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......

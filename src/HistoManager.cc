@@ -55,7 +55,8 @@ void HistoManager::Book()
   G4double vmin = 0.;
   G4double vmax = 100.;
 
-  const G4String procCatNames[] = {"hadElastic", "nInelastic"};
+  const G4String procCatNames[] = {"hadElastic", "nInelastic", "Compton scattering",
+                                   "photoelectric absorption", "pair production"};
 
   // Create all histograms as inactivated. Run::Run() reconfigures binning and
   // activates the subset that is meaningful for the current geometry.
@@ -87,7 +88,7 @@ void HistoManager::Book()
       G4int absNum = relIdx / kNbProcessCat + 1;
       G4int procCat = relIdx % kNbProcessCat;
       title = "Depth of " + procCatNames[procCat];
-      if (procCat == 1) title += " (incl. nCapture)";
+      if (procCat == kProcCatNInelastic) title += " (incl. nCapture)";
       title += " in absorber " + std::to_string(absNum);
     }
     else if (k >= kEdepByParticleBase && k < kCaptureGammaBase) {
@@ -142,9 +143,71 @@ void HistoManager::Book()
       G4int absNum = k - kEdepElectronGammaBase + 1;
       title = "Edep by e- (gamma-mediated) in absorber " + std::to_string(absNum);
     }
-    else if (k >= kEdepElectronIonicBase && k < kMaxHisto) {
+    else if (k >= kEdepElectronIonicBase && k < kModeratorCaptureGammaKE) {
       G4int absNum = k - kEdepElectronIonicBase + 1;
       title = "Edep by e- (ion/hadronic-mediated) in absorber " + std::to_string(absNum);
+    }
+    else if (k == kModeratorCaptureGammaKE) {
+      title = "Capture-gamma KE at birth in moderator (0-3 MeV line spectrum)";
+    }
+    else if (k >= kModeratorSecESpecBase && k < kModeratorFirstGenSecESpecBase) {
+      G4int partIdx = k - kModeratorSecESpecBase;
+      title = "KE spectrum of moderator-born secondary "
+              + FixedParticleName(partIdx);
+    }
+    else if (k >= kModeratorFirstGenSecESpecBase &&
+             k < kModeratorFirstGenSecESpecBase + kNbFixedParticles) {
+      G4int partIdx = k - kModeratorFirstGenSecESpecBase;
+      title = "KE at generation of first-generation moderator secondary "
+              + FixedParticleName(partIdx);
+    }
+    else if (k >= kTrackPathLengthBase && k < kTotalTrackLengthBase) {
+      G4int relIdx = k - kTrackPathLengthBase;
+      G4int absNum = relIdx / kNbFixedParticles + 1;
+      G4int partIdx = relIdx % kNbFixedParticles;
+      title = "Path length of " + FixedParticleName(partIdx)
+              + " in absorber " + std::to_string(absNum);
+    }
+    else if (k >= kTotalTrackLengthBase && k < kPathElectronGammaBase) {
+      G4int partIdx = k - kTotalTrackLengthBase;
+      title = "Total track length of " + FixedParticleName(partIdx);
+    }
+    else if (k >= kPathElectronGammaBase && k < kPathElectronIonicBase) {
+      title = "Path length of e- (gamma-mediated) in absorber "
+              + std::to_string(k - kPathElectronGammaBase + 1);
+    }
+    else if (k >= kPathElectronIonicBase && k < kTotalPathElectronGamma) {
+      title = "Path length of e- (ion/hadronic-mediated) in absorber "
+              + std::to_string(k - kPathElectronIonicBase + 1);
+    }
+    else if (k == kTotalPathElectronGamma) {
+      title = "Total track length of e- (gamma-mediated)";
+    }
+    else if (k == kTotalPathElectronIonic) {
+      title = "Total track length of e- (ion/hadronic-mediated)";
+    }
+    else if (k == kSecESpecElectronGamma) {
+      title = "KE spectrum of secondary e- (gamma-mediated)";
+    }
+    else if (k == kSecESpecElectronIonic) {
+      title = "KE spectrum of secondary e- (ion/hadronic-mediated)";
+    }
+    else if (k == kFirstGenSecESpecElectronGamma) {
+      title = "KE at generation of first-generation secondary e- (gamma-mediated)";
+    }
+    else if (k == kFirstGenSecESpecElectronIonic) {
+      title = "KE at generation of first-generation secondary e- (ion/hadronic-mediated)";
+    }
+    else if (k >= kPrimaryPathLengthBase && k < kTotalPrimaryPathLength) {
+      G4int absNum = k - kPrimaryPathLengthBase + 1;
+      title = "Path length of primary in absorber " + std::to_string(absNum);
+    }
+    else if (k == kTotalPrimaryPathLength) {
+      title = "Total track length of primary";
+    }
+    else if (k >= kPrimaryEdepBase && k < kPrimaryEdepBase + kMaxAbsor) {
+      G4int absNum = k - kPrimaryEdepBase + 1;
+      title = "Edep by primary in absorber " + std::to_string(absNum);
     }
     G4int ih = analysisManager->CreateH1(id, title, nbins, vmin, vmax);
     analysisManager->SetH1Activation(ih, false);

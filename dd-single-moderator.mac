@@ -19,10 +19,11 @@
 /testhadr/det/setNbOfLayers 1
 /testhadr/det/setNbOfAbsor 4
 /testhadr/det/setAbsor 1 G4_Ag        40 nm
-/testhadr/det/setAbsor 2 PNDI-T10     75 um
+/testhadr/det/setAbsor 2 PNDI-T10     30 um
 /testhadr/det/setAbsor 3 ITO         100 nm
-/testhadr/det/setAbsor 4 QuartzGlass 100 um
-/testhadr/det/setSizeYZ 15 mm
+/testhadr/det/setAbsor 4 QuartzGlass 100 nm
+/testhadr/det/setSizeY 8 mm
+/testhadr/det/setSizeZ 11 mm
 #
 /testhadr/det/setBoxExternal 103 53 25 mm
 /testhadr/det/setBoxWallThickness 1.8 mm
@@ -32,18 +33,18 @@
 /testhadr/det/setWorldMaterial G4_AIR
 /testhadr/det/setLabSize 5000 5000 5000 mm
 #
-/testhadr/det/setNbOfModeratorLayers 3
-/testhadr/det/setModeratorLayer 1 G4_Pb 5 mm
-/testhadr/det/setModeratorLayer 2 HeavyWater 85 mm
-/testhadr/det/setModeratorLayer 3 polyethylene 95 mm
+/testhadr/det/setNbOfModeratorLayers 2
+/testhadr/det/setModeratorLayer 1 G4_Pb 10 mm
+/testhadr/det/setModeratorLayer 2 polyethylene 95 mm
 /testhadr/det/setModeratorGap 10 mm
 # Lateral moderator footprint (full X x Y). Independent of bud-box externals.
 # Use "0 0 mm" to revert to box size (103 x 53 mm). Scale per macro as needed.
 /testhadr/det/setModeratorTransverse 200 200 mm
-/testhadr/det/setSourceStandoff 197 mm
+/testhadr/det/setSourceStandoff 115 mm
 #
-/run/numberOfThreads 1
 /run/initialize
+#
+/analysis/setFileName singlemoderator
 #
 /gps/particle neutron
 /gps/ene/type Mono
@@ -53,8 +54,8 @@
 # Centre z = box half-depth (12.5 mm) + sourceStandoff (200 mm).
 /gps/pos/type Plane
 /gps/pos/shape Rectangle
-/gps/pos/halfx 100 mm
-/gps/pos/halfy 100 mm
+/gps/pos/halfx 53 mm
+/gps/pos/halfy 25 mm
 #/gps/pos/halfx 51.5 mm
 #/gps/pos/halfy 26.5 mm
 /gps/pos/centre 0 0 212.5 mm
@@ -67,28 +68,6 @@
 /gps/ang/mintheta 0 deg
 /gps/ang/maxtheta 0 deg
 #
-/run/printProgress 1000
+/run/printProgress 100000
+/run/beamOn 10000000
 #
-# Visualization-only: inspect geometry (moderator stack + planar source). No /run/beamOn.
-/vis/open
-/vis/viewer/set/autoRefresh false
-/vis/verbose errors
-/vis/drawVolume
-/vis/geometry/set/visibility World 0 false
-/vis/geometry/set/visibility world 0 false
-/vis/viewer/set/style wireframe
-/vis/viewer/set/viewpointThetaPhi 65 35 deg
-/vis/viewer/zoom 2.0
-/vis/scene/add/axes 0 0 0 20 mm
-/vis/scene/add/trajectories smooth
-/vis/modeling/trajectories/create/drawByParticleID
-/vis/modeling/trajectories/drawByParticleID-0/set neutron cyan
-/vis/modeling/trajectories/drawByParticleID-0/set proton red
-/vis/modeling/trajectories/drawByParticleID-0/set gamma yellow
-/vis/modeling/trajectories/drawByParticleID-0/set e- green
-/vis/modeling/trajectories/drawByParticleID-0/set e+ magenta
-/vis/modeling/trajectories/drawByParticleID-0/set alpha orange
-/tracking/storeTrajectory 1
-/vis/scene/endOfEventAction accumulate
-/vis/viewer/set/autoRefresh true
-/vis/verbose warnings
