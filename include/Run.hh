@@ -30,6 +30,7 @@
 #define Run_h 1
 
 #include "DetectorConstruction.hh"
+#include "HistoManager.hh"  // kMaxAbsor, kNbOrigin
 
 #include "G4Run.hh"
 #include "G4VProcess.hh"
@@ -51,6 +52,12 @@ class Run : public G4Run
   public:
     void SetPrimary(G4ParticleDefinition* particle, G4double energy);
     void SetPrimaryDescription(const G4String& desc);
+
+    // Record the actual sampled primary of one event (called per event from
+    // PrimaryGeneratorAction, after the vertex is generated). Accumulates the
+    // true kinetic energy so EndOfRun can report the real mean primary energy
+    // instead of the GPS default read too early in BeginOfRunAction.
+    void AddPrimary(const G4ParticleDefinition* particle, G4double ekin);
     void CountProcesses(const G4VProcess* process);
     void CountSecondaryBirth(G4int absIdx, const G4String& particleName, G4int creatorCat);
 
@@ -62,6 +69,9 @@ class Run : public G4Run
     void SumEdepByParticle(G4int kAbs, const std::map<G4String, G4double>& edepMap);
     void SumEnergies(G4double edeptot, G4double eleak0, G4double eleak1);
     void SumEnergyFlow(G4int plane, G4double Eflow);
+
+    // Accumulate run-level cross-absorber Edep provenance (deposit x origin).
+    void SumEdepByOrigin(G4int depositAbsor, G4int originAbsor, G4double de);
 
     // Per-event helpers used by EventAction at end-of-event.
     void AddInteractedFlags(const G4bool flags[]);
@@ -75,11 +85,18 @@ class Run : public G4Run
   private:
     void AppendBatchSummaryCsv();
     void PrintSecondaryBirthSummary() const;
+    void PrintEdepByOriginSummary(G4double norm) const;
 
     DetectorConstruction* fDetector = nullptr;
     G4ParticleDefinition* fParticle = nullptr;
     G4double fEkin = 0.;
     G4String fPrimaryDesc = "";
+
+    // Actual sampled-primary accumulators (filled per event via AddPrimary).
+    // At EndOfRun the reported primary energy is fEkinSum / fPrimaryCount, i.e.
+    // the true mean over all generated primaries.
+    G4double fEkinSum = 0.;
+    G4long fPrimaryCount = 0;
 
     G4double fSumEAbs[kMaxAbsor], fSum2EAbs[kMaxAbsor];
     G4double fSumLAbs[kMaxAbsor], fSum2LAbs[kMaxAbsor];
@@ -96,6 +113,12 @@ class Run : public G4Run
     std::map<G4int, G4long> fSecBirthByCreatorCat[kMaxAbsor];
     std::vector<G4double> fEnergyFlow;
     std::map<G4String, G4double> fEdepByParticle[kMaxAbsor];
+
+    // Run-level cross-absorber Edep provenance: fEdepByOriginSum[d-1][o] is the
+    // total energy deposited in absorber d by lineages originating in absorber o
+    // (o = 0 -> external/primary). Summed over events, merged across threads,
+    // printed as a matrix in EndOfRun.
+    G4double fEdepByOriginSum[kMaxAbsor][kNbOrigin] = {{0.}};
 
     // Number of events in which a primary neutron interacted in absorber k
     // (one entry per absorber slot). Used to compute interaction fraction.

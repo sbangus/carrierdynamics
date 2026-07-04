@@ -18,7 +18,7 @@
 #
 /testhadr/det/setBoxExternal 103 53 25 mm
 /testhadr/det/setBoxWallThickness 1.8 mm
-/testhadr/det/setDetectorStandoff 5 mm
+/testhadr/det/setDetectorStandoff 3 mm
 /testhadr/det/setBoxMaterial G4_Al
 /testhadr/det/setCavityMaterial G4_AIR
 /testhadr/det/setWorldMaterial G4_AIR
@@ -41,7 +41,7 @@
 #
 /gps/pos/type Volume
 /gps/pos/shape Cylinder
-/gps/pos/radius 7 mm
+/gps/pos/radius 5 mm
 /gps/pos/halfz 5 mm
 /gps/pos/centre 0 0 18.562 mm
 /gps/pos/rot1 0 1 0

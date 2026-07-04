@@ -164,6 +164,22 @@ void SteppingAction::UserSteppingAction(const G4Step* aStep)
   const G4LogicalVolume* preLV =
       (volume != nullptr) ? volume->GetLogicalVolume() : nullptr;
 
+  // Cross-absorber Edep provenance: on a secondary's first step, tag its origin
+  // absorber. Origin = the absorber in which the earliest ancestor of the
+  // lineage was created. Rule: inherit the parent's origin if it has one;
+  // otherwise, if this track is itself born inside an absorber, its origin is
+  // that absorber (else it stays 0 = external/primary lineage). preLV at the
+  // first step is the volume containing the creation vertex.
+  if (track->GetCurrentStepNumber() == 1 && track->GetParentID() > 0) {
+    G4int origin = fEventAct->GetTrackOrigin(track->GetParentID());
+    if (origin == 0 && preLV != nullptr) {
+      for (G4int i = 1; i <= fDetector->GetNbOfAbsor(); ++i) {
+        if (preLV == fDetector->GetAbsorberLogical(i)) { origin = i; break; }
+      }
+    }
+    if (origin > 0) fEventAct->SetTrackOrigin(track->GetTrackID(), origin);
+  }
+
   // Moderator-born secondaries: score at first step inside a moderator layer.
   if (track->GetCurrentStepNumber() == 1 && track->GetParentID() > 0 && preLV != nullptr
       && fDetector->IsModeratorLogical(preLV))
@@ -224,6 +240,10 @@ void SteppingAction::UserSteppingAction(const G4Step* aStep)
         fEventAct->SumElectronEdepByLineage(absorNum, lineage, edep);
       }
     }
+    // Cross-absorber provenance: attribute this deposit to the origin absorber
+    // of the depositing track's lineage (0 = external/primary).
+    const G4int origin = fEventAct->GetTrackOrigin(track->GetTrackID());
+    fEventAct->SumEdepByOrigin(absorNum, origin, edep);
   }
 
   // longitudinal profile of edep per absorber

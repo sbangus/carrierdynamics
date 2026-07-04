@@ -29,10 +29,14 @@
 #include "PrimaryGeneratorAction.hh"
 
 #include "DetectorConstruction.hh"
+#include "Run.hh"
 
 #include "G4Event.hh"
 #include "G4GeneralParticleSource.hh"
 #include "G4ParticleTable.hh"
+#include "G4PrimaryParticle.hh"
+#include "G4PrimaryVertex.hh"
+#include "G4RunManager.hh"
 #include "G4SPSAngDistribution.hh"
 #include "G4SPSEneDistribution.hh"
 #include "G4SPSPosDistribution.hh"
@@ -85,6 +89,23 @@ PrimaryGeneratorAction::~PrimaryGeneratorAction()
 void PrimaryGeneratorAction::GeneratePrimaries(G4Event* anEvent)
 {
   fGPS->GeneratePrimaryVertex(anEvent);
+
+  // Record the actual sampled primary (type + kinetic energy) into the current
+  // (thread-local) run. This is the reliable source of the run's primary energy
+  // for the EndOfRun summary; GPS::GetParticleEnergy() read in BeginOfRunAction
+  // returns the GPS default because no vertex has been sampled yet.
+  const G4PrimaryVertex* vertex = anEvent->GetPrimaryVertex(0);
+  if (vertex != nullptr) {
+    const G4PrimaryParticle* primary = vertex->GetPrimary(0);
+    if (primary != nullptr) {
+      auto* run = static_cast<Run*>(
+        G4RunManager::GetRunManager()->GetNonConstCurrentRun());
+      if (run != nullptr) {
+        run->AddPrimary(primary->GetParticleDefinition(),
+                        primary->GetKineticEnergy());
+      }
+    }
+  }
 }
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......

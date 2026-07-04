@@ -438,6 +438,19 @@ Run::Run(DetectorConstruction* det) : fDetector(det)
   ConfigurePrimaryTotalPath(analysis, kTotalPrimaryPathLength);
   analysis->SetH1Activation(kTotalPrimaryPathLength, true);
 
+  // Cross-absorber Edep provenance: per-event Edep in absorber d split by the
+  // origin absorber of the depositing track's lineage (origin 0 = external /
+  // primary, 1..nAbs = born in that absorber). Only the active (d, o) pairs are
+  // configured/activated; the rest stay inactive. Log binning over a wide
+  // dynamic range since off-diagonal (cross-layer) deposits are typically small.
+  for (G4int d = 1; d <= nAbs; ++d) {
+    for (G4int o = 0; o <= nAbs; ++o) {
+      const G4int ih = EdepByOriginId(d, o);
+      analysis->SetH1(ih, 120, 1.e-6 * MeV, 5. * MeV, "MeV", "none", "log");
+      analysis->SetH1Activation(ih, true);
+    }
+  }
+
   // Run-level scalar histograms: energy flow, total Edep, leakage, released.
   // IDs 41..44 (= 2*kMaxAbsor+1 .. 2*kMaxAbsor+4 when kMaxAbsor=20).
   {
@@ -471,6 +484,18 @@ void Run::SetPrimary(G4ParticleDefinition* particle, G4double energy)
 void Run::SetPrimaryDescription(const G4String& desc)
 {
   fPrimaryDesc = desc;
+}
+
+//....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
+
+void Run::AddPrimary(const G4ParticleDefinition* particle, G4double ekin)
+{
+  // Trust the actual generated primary over the value cached in
+  // BeginOfRunAction (GPS::GetParticleEnergy() is read before the first vertex
+  // is sampled, so it returns the GPS default, not the macro-configured energy).
+  if (particle != nullptr) fParticle = const_cast<G4ParticleDefinition*>(particle);
+  fEkinSum += ekin;
+  ++fPrimaryCount;
 }
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
@@ -526,6 +551,15 @@ void Run::SumEdepByParticle(G4int kAbs, const std::map<G4String, G4double>& edep
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
 
+void Run::SumEdepByOrigin(G4int depositAbsor, G4int originAbsor, G4double de)
+{
+  if (depositAbsor < 1 || depositAbsor > kMaxAbsor) return;
+  if (originAbsor < 0 || originAbsor >= kNbOrigin) return;
+  fEdepByOriginSum[depositAbsor - 1][originAbsor] += de;
+}
+
+//....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
+
 void Run::SumEnergies(G4double edeptot, G4double eleak0, G4double eleak1)
 {
   fEdepTot += edeptot;
@@ -571,6 +605,10 @@ void Run::Merge(const G4Run* run)
   fEkin = localRun->fEkin;
   fPrimaryDesc = localRun->fPrimaryDesc;
 
+  // accumulate the true sampled-primary statistics across threads
+  fEkinSum += localRun->fEkinSum;
+  fPrimaryCount += localRun->fPrimaryCount;
+
   // accumulate sums
   //
   for (G4int k = 0; k < kMaxAbsor; k++) {
@@ -612,6 +650,13 @@ void Run::Merge(const G4Run* run)
   // gammas crossing the detector front face
   fGammaAtDetectorFace += localRun->fGammaAtDetectorFace;
 
+  // cross-absorber Edep provenance matrix
+  for (G4int d = 0; d < kMaxAbsor; ++d) {
+    for (G4int o = 0; o < kNbOrigin; ++o) {
+      fEdepByOriginSum[d][o] += localRun->fEdepByOriginSum[d][o];
+    }
+  }
+
   // map: processes count
   std::map<G4String, G4int>::const_iterator itp;
   for (itp = localRun->fProcCounter.begin(); itp != localRun->fProcCounter.end(); ++itp) {
@@ -641,6 +686,11 @@ void Run::Merge(const G4Run* run)
 
 void Run::EndOfRun()
 {
+  // Use the true mean primary kinetic energy sampled over the run (accumulated
+  // per event in AddPrimary). Falls back to the BeginOfRunAction value only if
+  // no primaries were recorded.
+  if (fPrimaryCount > 0) fEkin = fEkinSum / G4double(fPrimaryCount);
+
   // run condition
   //
   if (!fPrimaryDesc.empty()) {
@@ -736,6 +786,8 @@ void Run::EndOfRun()
     }
   }
   G4cout << "------------------------------------------------------------\n";
+
+  PrintEdepByOriginSummary(norm);
 
   PrintSecondaryBirthSummary();
 
@@ -847,8 +899,11 @@ void Run::EndOfRun()
     fSecBirthByPart[k].clear();
     fSecBirthByCreatorCat[k].clear();
     fNeutronInteractedEvents[k] = 0;
+    for (G4int o = 0; o < kNbOrigin; ++o) fEdepByOriginSum[k][o] = 0.;
   }
   fGammaAtDetectorFace = 0;
+  fEkinSum = 0.;
+  fPrimaryCount = 0;
 
   G4cout.setf(mode, std::ios::floatfield);
   G4cout.precision(prec);
@@ -861,6 +916,64 @@ void Run::SetBatchCsvExport(G4bool enable, const G4String& path, const G4String&
   fBatchCsvEnable = enable;
   fBatchCsvPath = path;
   fBatchCsvTag = tag;
+}
+
+//....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
+
+void Run::PrintEdepByOriginSummary(G4double norm) const
+{
+  const G4int nAbs = fDetector->GetNbOfAbsor();
+  if (nAbs <= 0) return;
+
+  // Is there any off-diagonal (cross-absorber) or non-primary provenance to
+  // report? If every deposit is external/primary (origin 0), the matrix adds
+  // nothing beyond the existing per-absorber Edep, so skip it.
+  G4bool hasProvenance = false;
+  for (G4int d = 1; d <= nAbs && !hasProvenance; ++d) {
+    for (G4int o = 1; o <= nAbs; ++o) {
+      if (fEdepByOriginSum[d - 1][o] > 0.) { hasProvenance = true; break; }
+    }
+  }
+
+  G4cout << "\n Cross-absorber energy-deposit provenance"
+         << " (mean Edep per event, MeV):\n";
+  G4cout << "   rows = absorber where energy is deposited;"
+         << " columns = absorber where the depositing track's lineage originated\n";
+  G4cout << "   column 'ext' = external / primary lineage"
+         << " (never born inside an absorber)\n";
+  if (!hasProvenance) {
+    G4cout << "   (all deposits trace directly to the primary lineage;"
+           << " no absorber-born cross-talk observed)\n";
+  }
+
+  std::ios::fmtflags mode = G4cout.flags();
+  G4int prec = G4cout.precision(3);
+  G4cout << std::scientific;
+
+  // Header row.
+  G4cout << "\n   " << std::setw(14) << "deposit \\ orig" << std::setw(12) << "ext";
+  for (G4int o = 1; o <= nAbs; ++o) {
+    G4cout << std::setw(11) << o;
+  }
+  G4cout << std::setw(13) << "row total\n";
+
+  for (G4int d = 1; d <= nAbs; ++d) {
+    G4cout << "   " << std::setw(2) << d << " "
+           << std::setw(11) << fDetector->GetAbsorMaterial(d)->GetName();
+    G4double rowTot = 0.;
+    for (G4int o = 0; o <= nAbs; ++o) {
+      const G4double mean = fEdepByOriginSum[d - 1][o] * norm / MeV;
+      rowTot += mean;
+      G4cout << std::setw(o == 0 ? 12 : 11) << mean;
+    }
+    G4cout << std::setw(13) << rowTot << "\n";
+  }
+  G4cout << "   (histograms: EdepByOriginId = " << kEdepByOriginBase
+         << " .. " << (kEdepByOriginBase + nAbs * kNbOrigin - 1) << ")\n";
+  G4cout << "------------------------------------------------------------\n";
+
+  G4cout.setf(mode, std::ios::floatfield);
+  G4cout.precision(prec);
 }
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......

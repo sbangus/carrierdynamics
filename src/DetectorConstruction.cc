@@ -33,6 +33,7 @@
 #include <cmath>
 
 #include "G4Box.hh"
+#include "G4Ellipsoid.hh"
 #include "G4GeometryManager.hh"
 #include "G4Isotope.hh"
 #include "G4LogicalVolume.hh"
@@ -120,6 +121,12 @@ DetectorConstruction::DetectorConstruction()
   // PrimaryGeneratorAction when no GPS position is given by macro.
   fSourceStandoff = 100. * mm;
 
+  // Silver-epoxy contact blob (localized half-ellipsoid) defaults. Only used
+  // when /testhadr/det/setSilverEpoxyBlob true; otherwise absorber 1 is a
+  // full-area box like the other layers.
+  fEpoxyBlobRadius = 2. * mm;
+  fEpoxyBlobHeight = 1. * mm;
+
   // materials
   DefineMaterials();
   SetWorldMaterial("G4_AIR");
@@ -159,6 +166,7 @@ DetectorConstruction::~DetectorConstruction()
 {
   delete fDetectorMessenger;
   delete fCalorRotation;
+  delete fEpoxyBlobRotation;
 }
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
@@ -303,6 +311,18 @@ void DetectorConstruction::DefineMaterials()
   G4Material* QuartzGlass = new G4Material("QuartzGlass", density = 2.20 * g / cm3, ncomponents = 2);
   QuartzGlass->AddElement(Si, natoms = 1);
   QuartzGlass->AddElement(O, natoms = 2);
+
+  // Silver-loaded conductive epoxy (bisphenol-F diglycidyl ether-like resin
+  // filled with Ag flakes). Modeled as a single homogeneous mixture: the flake
+  // scale (~um) is far below the 662 keV gamma mean free path and the secondary
+  // electron range, so a mass-fraction average is accurate. Composition and
+  // density from the supplied datasheet.
+  G4Element* Ag = manager->FindOrBuildElement(47);
+  G4Material* silverEpoxy = new G4Material("SilverEpoxy", density = 2.34 * g / cm3, ncomponents = 4);
+  silverEpoxy->AddElement(Ag, 0.5700);
+  silverEpoxy->AddElement(C, 0.3140);
+  silverEpoxy->AddElement(H, 0.0278);
+  silverEpoxy->AddElement(O, 0.0881);
 
   // Polyethylene (C2H4)n — repeat unit C2H4, density for validation slabs.
   // Hydrogen is wired as TS_H_of_Polyethylene so the bound-atom
@@ -650,16 +670,18 @@ G4VPhysicalVolume* DetectorConstruction::Construct()
   }
 
   //
-  // Calorimeter: rotated 90 deg about Y so the (locally X-stacked) absorber
+  // Calorimeter: rotated -90 deg about Y so the (locally X-stacked) absorber
   // layout becomes Z-stacked in the global frame, with the first absorber
   // (local -X end) facing the +Z (source) side.
   //
-  // With rotateY(+90), local +X axis maps to global -Z, so the local -X
-  // end (where absorber 1 sits) lands at global +Z = front face -- which
-  // is the side closest to the default source position.
+  // With rotateY(-90), the local -X end (where absorber 1 sits) maps to global
+  // +Z = front face, i.e. the side closest to the default source position, so
+  // the stack order from the source inward is absorber 1, 2, 3, ...  (e.g.
+  // silver -> polymer -> ITO -> glass). rotateY(+90) reverses this and puts the
+  // last absorber at the front, which is NOT what the geometry intends.
   if (fCalorRotation == nullptr) {
     fCalorRotation = new G4RotationMatrix();
-    fCalorRotation->rotateY(90. * deg);
+    fCalorRotation->rotateY(-90. * deg);
   }
   G4double calorCenterZ = frontZ - 0.5 * fCalorThickness;
 
@@ -690,18 +712,64 @@ G4VPhysicalVolume* DetectorConstruction::Construct()
   // Absorbers
   //
   G4double xfront = -0.5 * fLayerThickness;
+  fLogicEpoxyContainer = nullptr;
   for (G4int k = 1; k <= fNbOfAbsor; ++k) {
+    // Full-area box slab occupying this absorber's slot in the stack. Always
+    // built so the stacking geometry (thicknesses, downstream layer positions)
+    // is unchanged whether or not the blob option is active.
     fSolidAbsor[k] = new G4Box("Absorber",
                                fAbsorThickness[k] / 2, fCalorSizeY / 2, fCalorSizeZ / 2);
 
-    fLogicAbsor[k] = new G4LogicalVolume(fSolidAbsor[k], fAbsorMaterial[k],
-                                         fAbsorMaterial[k]->GetName());
-
     G4double xcenter = xfront + 0.5 * fAbsorThickness[k];
     xfront += fAbsorThickness[k];
-    fPhysiAbsor[k] = new G4PVPlacement(0, G4ThreeVector(xcenter, 0., 0.), fLogicAbsor[k],
-                                       fAbsorMaterial[k]->GetName(), fLogicLayer, false,
-                                       k);  // copy number
+
+    const G4bool blobHere = (fSilverEpoxyBlob && k == 1);
+    if (blobHere) {
+      // Localized silver-epoxy contact: the absorber-1 slot is filled with
+      // cavity material (air) and a half-ellipsoid of absorber-1 material
+      // (SilverEpoxy) is placed inside it, resting on the front face of the
+      // next layer (the pure Ag film). fLogicAbsor[1] is the ellipsoid so all
+      // scoring that keys on GetAbsorberLogical(1) targets the epoxy blob; the
+      // surrounding air is inert filler that maps to no absorber.
+      fLogicEpoxyContainer =
+        new G4LogicalVolume(fSolidAbsor[k], fCavityMaterial, "EpoxyContainer");
+      new G4PVPlacement(0, G4ThreeVector(xcenter, 0., 0.), fLogicEpoxyContainer,
+                        "EpoxyContainer", fLogicLayer, false, k);
+
+      // Half-ellipsoid: circular base of radius fEpoxyBlobRadius (in the layer
+      // Y-Z plane) and semi-axis fEpoxyBlobHeight along the stack (layer X).
+      // Ellipsoid local axis is Z; keep the top half (z in [0, height]) so the
+      // flat base sits at z = 0, then rotate so local +Z -> layer -X (dome
+      // pointing toward the +Z source side).
+      G4double blobHeight = std::min(fEpoxyBlobHeight, fAbsorThickness[k]);
+      G4Ellipsoid* solidBlob =
+        new G4Ellipsoid("SilverEpoxyBlob", fEpoxyBlobRadius, fEpoxyBlobRadius,
+                        blobHeight, 0., blobHeight);
+      fLogicAbsor[k] = new G4LogicalVolume(solidBlob, fAbsorMaterial[k],
+                                           fAbsorMaterial[k]->GetName());
+
+      // G4PVPlacement takes a passive (frame) rotation, so rotateY(+90 deg)
+      // maps the ellipsoid's local +Z (dome axis) onto the layer -X direction,
+      // i.e. the dome points toward the +Z source side while the flat base
+      // rests against the +X face (the Ag-film interface).
+      delete fEpoxyBlobRotation;
+      fEpoxyBlobRotation = new G4RotationMatrix();
+      fEpoxyBlobRotation->rotateY(90. * deg);
+      // Base sits at the container +X face (interface with the Ag film);
+      // container-local +X face is at +fAbsorThickness[1]/2.
+      fPhysiAbsor[k] =
+        new G4PVPlacement(fEpoxyBlobRotation,
+                          G4ThreeVector(0.5 * fAbsorThickness[k], 0., 0.),
+                          fLogicAbsor[k], fAbsorMaterial[k]->GetName(),
+                          fLogicEpoxyContainer, false, k, true);  // checkOverlaps
+    }
+    else {
+      fLogicAbsor[k] = new G4LogicalVolume(fSolidAbsor[k], fAbsorMaterial[k],
+                                           fAbsorMaterial[k]->GetName());
+      fPhysiAbsor[k] = new G4PVPlacement(0, G4ThreeVector(xcenter, 0., 0.), fLogicAbsor[k],
+                                         fAbsorMaterial[k]->GetName(), fLogicLayer, false,
+                                         k);  // copy number
+    }
   }
 
   //
@@ -907,6 +975,17 @@ void DetectorConstruction::PrintCalorParameters()
          << G4BestUnit(fCalorSizeY, "Length") << G4endl;
   G4cout << "                     transverse sizeZ  = " << std::setw(wid)
          << G4BestUnit(fCalorSizeZ, "Length") << G4endl;
+  if (fSilverEpoxyBlob) {
+    G4cout << " Absorber 1 geometry : localized half-ellipsoid blob ("
+           << fAbsorMaterial[1]->GetName() << ")   base radius = "
+           << G4BestUnit(fEpoxyBlobRadius, "Length")
+           << "   height = " << G4BestUnit(fEpoxyBlobHeight, "Length")
+           << "   (surrounded by cavity material in the absorber-1 slot)"
+           << G4endl;
+  }
+  else {
+    G4cout << " Absorber 1 geometry : full-area box" << G4endl;
+  }
   G4cout << "-------------------------------------------------------------\n";
 
   G4cout << "\n Bud box (external) : "
@@ -1110,6 +1189,18 @@ void DetectorConstruction::SetSourceStandoff(G4double d)
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
 
 void DetectorConstruction::SetCs137SourceEnable(G4bool on) { fCs137SourceEnable = on; }
+
+//....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
+
+void DetectorConstruction::SetSilverEpoxyBlob(G4bool on) { fSilverEpoxyBlob = on; }
+
+//....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
+
+void DetectorConstruction::SetSilverEpoxyBlobSize(G4double radius, G4double height)
+{
+  if (radius > 0.) fEpoxyBlobRadius = radius;
+  if (height > 0.) fEpoxyBlobHeight = height;
+}
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
 

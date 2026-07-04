@@ -12,15 +12,18 @@
 /run/verbose 1
 #
 /testhadr/det/setNbOfLayers 1
-/testhadr/det/setNbOfAbsor 4
-/testhadr/det/setAbsor 1 G4_Ag        40 nm
-/testhadr/det/setAbsor 2 PNDI-T10     30 um
-/testhadr/det/setAbsor 3 ITO         100 nm
-/testhadr/det/setAbsor 4 QuartzGlass 1 mm
+/testhadr/det/setNbOfAbsor 5
+/testhadr/det/setAbsor 1 SilverEpoxy   1.2 mm
+/testhadr/det/setAbsor 2 G4_Ag        40 nm
+/testhadr/det/setAbsor 3 PNDI-T10     30 um
+/testhadr/det/setAbsor 4 ITO         100 nm
+/testhadr/det/setAbsor 5 QuartzGlass 1 mm
 /testhadr/det/setSizeY 8.5 mm
 /testhadr/det/setSizeZ 11.5 mm
 #
-
+# --- Option B: localized half-ellipsoid blob (comment out for full-area box) ---
+/testhadr/det/setSilverEpoxyBlob true
+/testhadr/det/setSilverEpoxyBlobSize 1 0.5 mm
 #
 /testhadr/det/setBoxExternal 103 53 25 mm
 /testhadr/det/setBoxWallThickness 1.8 mm
@@ -40,7 +43,7 @@
 /random/setSeeds 137662001 662137002
 /run/initialize
 #
-/analysis/setFileName Cs-137
+/analysis/setFileName Cs-137-epoxy
 #
 /gps/particle gamma
 /gps/ene/type Mono

@@ -245,7 +245,26 @@ inline G4int PrimaryEdepId(G4int absIdx) {
     return kPrimaryEdepBase + (absIdx - 1);
 }
 
-const G4int kMaxHisto = kPrimaryEdepBase + kMaxAbsor;
+// Cross-absorber energy-deposit provenance: energy deposited in absorber
+// `depositAbs` (1..kMaxAbsor) split by the "origin absorber" of the depositing
+// track's lineage. The origin index is:
+//   0             : external / primary lineage (the track descends only from
+//                   the source particle; it was never born inside an absorber)
+//   1..kMaxAbsor  : the absorber in which the earliest ancestor of the track
+//                   was created (e.g. a gamma born in the silver-epoxy blob that
+//                   Compton-scatters an e- which deposits in a downstream layer
+//                   -> origin = the epoxy absorber index).
+// Layout: kEdepByOriginBase + (depositAbs-1)*kNbOrigin + originIdx.
+// The diagonal-like case originIdx == depositAbs is "born and deposited in the
+// same absorber"; originIdx == 0 is "deposited directly by the primary lineage".
+const G4int kNbOrigin = kMaxAbsor + 1;  // origin 0 (external) + 1..kMaxAbsor
+const G4int kEdepByOriginBase = kPrimaryEdepBase + kMaxAbsor;
+
+inline G4int EdepByOriginId(G4int depositAbs, G4int originIdx) {
+    return kEdepByOriginBase + (depositAbs - 1) * kNbOrigin + originIdx;
+}
+
+const G4int kMaxHisto = kEdepByOriginBase + kMaxAbsor * kNbOrigin;
 
 // Creator-process categories for secondary-birth run summary (Run::PrintSecondaryBirthSummary).
 const G4int kNbSecCreatorCat = 5;  // hadronic, em_ion, em_photon, em_other, other

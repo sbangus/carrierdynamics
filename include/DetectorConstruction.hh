@@ -91,6 +91,13 @@ class DetectorConstruction : public G4VUserDetectorConstruction
     /// central cylindrical bore. Used with /gps/pos/confine Cs137Source.
     void SetCs137SourceEnable(G4bool);
 
+    /// Silver-epoxy contact modeled as a localized half-ellipsoid blob (base
+    /// radius fEpoxyBlobRadius, height fEpoxyBlobHeight) sitting on the front
+    /// face of absorber 1, instead of a full-area box. Absorber 1 must be
+    /// SilverEpoxy and its thickness sets the front air region depth.
+    void SetSilverEpoxyBlob(G4bool);
+    void SetSilverEpoxyBlobSize(G4double radius, G4double height);
+
     G4bool GetModeratorEnable() const
     {
       return fModeratorEnable || fNbModeratorLayers > 0;
@@ -272,6 +279,16 @@ class DetectorConstruction : public G4VUserDetectorConstruction
     G4LogicalVolume* fLogicCs137Source = nullptr;
     G4VPhysicalVolume* fPhysiCs137Source = nullptr;
     G4RotationMatrix* fCs137SourceRotation = nullptr;
+
+    // Silver-epoxy contact as a localized half-ellipsoid on the front absorber.
+    // When enabled, absorber 1's box region is filled with cavity material and a
+    // half-ellipsoid of absorber 1's material (SilverEpoxy) is placed inside it;
+    // fLogicAbsor[1] is set to the ellipsoid so scoring targets the epoxy.
+    G4bool fSilverEpoxyBlob = false;
+    G4double fEpoxyBlobRadius = 0.;  // set in constructor (default 2 mm)
+    G4double fEpoxyBlobHeight = 0.;  // set in constructor (default 1 mm)
+    G4LogicalVolume* fLogicEpoxyContainer = nullptr;
+    G4RotationMatrix* fEpoxyBlobRotation = nullptr;
 
     // Rotation applied to the calorimeter so its (locally X-stacked) layout
     // becomes Z-stacked in the global frame, with the first absorber facing

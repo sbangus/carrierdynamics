@@ -84,6 +84,9 @@ set(Hadr05_SCRIPTS
     dd-single-moderator-vis.mac
     dd-single-moderator.mac
     Am-241-test.mac
+    silver-epoxy-test.mac
+    silver-epoxy-test-vis.mac
+    Cs-137-silver-epoxy.mac
   )
 
 foreach(_script ${Hadr05_SCRIPTS})

@@ -344,6 +344,36 @@ DetectorMessenger::DetectorMessenger(DetectorConstruction* Det) : fDetector(Det)
   fCs137SourceEnableCmd->SetParameterName("Enable", false);
   fCs137SourceEnableCmd->AvailableForStates(G4State_PreInit);
   fCs137SourceEnableCmd->SetToBeBroadcasted(false);
+
+  fSilverEpoxyBlobCmd = new G4UIcmdWithABool("/testhadr/det/setSilverEpoxyBlob", this);
+  fSilverEpoxyBlobCmd->SetGuidance(
+    "If true, absorber 1 is built as a localized half-ellipsoid blob (default "
+    "base radius 2 mm, height 1 mm) of its material, embedded in cavity "
+    "material, instead of a full-area box. Intended for the silver-epoxy "
+    "contact resting on the pure-Ag film. Absorber 1's material must be "
+    "SilverEpoxy and its thickness must be >= the blob height.");
+  fSilverEpoxyBlobCmd->SetParameterName("Enable", false);
+  fSilverEpoxyBlobCmd->AvailableForStates(G4State_PreInit);
+  fSilverEpoxyBlobCmd->SetToBeBroadcasted(false);
+
+  fSilverEpoxyBlobSizeCmd = new G4UIcommand("/testhadr/det/setSilverEpoxyBlobSize", this);
+  fSilverEpoxyBlobSizeCmd->SetGuidance(
+    "Set the silver-epoxy blob base radius and height (dome semi-axis along the "
+    "stack): radius height unit.");
+  G4UIparameter* blobR = new G4UIparameter("radius", 'd', false);
+  blobR->SetGuidance("base radius");
+  blobR->SetParameterRange("radius>0.");
+  fSilverEpoxyBlobSizeCmd->SetParameter(blobR);
+  G4UIparameter* blobH = new G4UIparameter("height", 'd', false);
+  blobH->SetGuidance("dome height (semi-axis along stack)");
+  blobH->SetParameterRange("height>0.");
+  fSilverEpoxyBlobSizeCmd->SetParameter(blobH);
+  G4UIparameter* blobUnt = new G4UIparameter("unit", 's', false);
+  blobUnt->SetGuidance("length unit");
+  blobUnt->SetParameterCandidates(G4UIcommand::UnitsList(G4UIcommand::CategoryOf("mm")));
+  fSilverEpoxyBlobSizeCmd->SetParameter(blobUnt);
+  fSilverEpoxyBlobSizeCmd->AvailableForStates(G4State_PreInit);
+  fSilverEpoxyBlobSizeCmd->SetToBeBroadcasted(false);
 }
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
@@ -375,6 +405,8 @@ DetectorMessenger::~DetectorMessenger()
   delete fEncasementOuterCmd;
   delete fEncasementWallCmd;
   delete fCs137SourceEnableCmd;
+  delete fSilverEpoxyBlobCmd;
+  delete fSilverEpoxyBlobSizeCmd;
   delete fDetDir;
   delete fTestemDir;
 }
@@ -512,6 +544,20 @@ void DetectorMessenger::SetNewValue(G4UIcommand* command, G4String newValue)
 
   if (command == fCs137SourceEnableCmd) {
     fDetector->SetCs137SourceEnable(G4UIcmdWithABool::GetNewBoolValue(newValue.c_str()));
+  }
+
+  if (command == fSilverEpoxyBlobCmd) {
+    fDetector->SetSilverEpoxyBlob(G4UIcmdWithABool::GetNewBoolValue(newValue.c_str()));
+  }
+
+  if (command == fSilverEpoxyBlobSizeCmd) {
+    G4double radius = 0.;
+    G4double height = 0.;
+    G4String unt;
+    std::istringstream is(newValue);
+    is >> radius >> height >> unt;
+    const G4double scale = G4UIcommand::ValueOf(unt);
+    fDetector->SetSilverEpoxyBlobSize(radius * scale, height * scale);
   }
 }
 

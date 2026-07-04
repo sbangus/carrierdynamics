@@ -1,0 +1,70 @@
+# Silver-epoxy contact layer as absorber 1, on top of the pure-Ag film.
+#
+# The silver epoxy (homogenized Ag/C/H/O, rho = 2.34 g/cm3) is modeled as the
+# FIRST absorber in the stack (source side), sitting on the 40 nm pure-Ag layer.
+# Adding it shifts the downstream indices by one:
+#   1 = SilverEpoxy   (this layer)
+#   2 = G4_Ag         (40 nm pure-silver film)
+#   3 = PNDI-T10      (active polymer, 30 um)
+#   4 = ITO           (100 nm)
+#   5 = QuartzGlass   (100 nm)
+#
+# Two geometry options for absorber 1 (pick ONE):
+#   (A) Full-area box  : default; epoxy fills the whole absorber-1 slot.
+#   (B) Localized blob : /testhadr/det/setSilverEpoxyBlob true; a half-ellipsoid
+#       (default base radius 2 mm, height 1 mm) of epoxy embedded in air. The
+#       absorber-1 thickness must be >= the blob height, and it sets the depth
+#       of the air region that holds the blob.
+#
+# The Cross-absorber energy-deposit provenance table (printed at EndOfRun) and
+# the EdepByOriginId histograms show how energy deposited in each layer traces
+# back to the absorber where the depositing track's lineage originated -- e.g.
+# electrons born in the epoxy (origin 1) that deposit in PNDI-T10 (row 3).
+#
+/control/verbose 1
+/run/verbose 1
+#
+/testhadr/det/setNbOfLayers 1
+/testhadr/det/setNbOfAbsor 5
+/testhadr/det/setAbsor 1 SilverEpoxy   1.2 mm
+/testhadr/det/setAbsor 2 G4_Ag        40 nm
+/testhadr/det/setAbsor 3 PNDI-T10     30 um
+/testhadr/det/setAbsor 4 ITO         100 nm
+/testhadr/det/setAbsor 5 QuartzGlass 100 nm
+/testhadr/det/setSizeY 8 mm
+/testhadr/det/setSizeZ 11 mm
+#
+# --- Option B: localized half-ellipsoid blob (comment out for full-area box) ---
+/testhadr/det/setSilverEpoxyBlob true
+/testhadr/det/setSilverEpoxyBlobSize 2 1 mm
+#
+/testhadr/det/setBoxExternal 103 53 25 mm
+/testhadr/det/setBoxWallThickness 1.8 mm
+/testhadr/det/setDetectorStandoff 10 mm
+/testhadr/det/setBoxMaterial G4_Al
+/testhadr/det/setCavityMaterial G4_AIR
+/testhadr/det/setWorldMaterial G4_AIR
+/testhadr/det/setLabSize 2000 2000 2000 mm
+#
+/run/initialize
+#
+/analysis/setFileName silver-epoxy-test
+#
+# Cs-137-like 662 keV gammas along -Z toward the detector.
+/gps/particle gamma
+/gps/ene/type Mono
+/gps/ene/mono 662 keV
+/gps/pos/type Plane
+/gps/pos/shape Rectangle
+/gps/pos/halfx 5.5 mm
+/gps/pos/halfy 4 mm
+/gps/pos/centre 0 0 60 mm
+/gps/ang/type iso
+/gps/ang/rot1 1 0 0
+/gps/ang/rot2 0 1 0
+/gps/ang/mintheta 0 deg
+/gps/ang/maxtheta 0 deg
+#
+/run/printProgress 100000
+/run/beamOn 1000000
+#

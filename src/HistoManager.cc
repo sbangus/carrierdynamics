@@ -209,6 +209,19 @@ void HistoManager::Book()
       G4int absNum = k - kPrimaryEdepBase + 1;
       title = "Edep by primary in absorber " + std::to_string(absNum);
     }
+    else if (k >= kEdepByOriginBase && k < kEdepByOriginBase + kMaxAbsor * kNbOrigin) {
+      G4int relIdx = k - kEdepByOriginBase;
+      G4int depositAbs = relIdx / kNbOrigin + 1;
+      G4int originIdx = relIdx % kNbOrigin;
+      if (originIdx == 0) {
+        title = "Edep in absorber " + std::to_string(depositAbs)
+                + " from external/primary lineage";
+      }
+      else {
+        title = "Edep in absorber " + std::to_string(depositAbs)
+                + " from lineage originating in absorber " + std::to_string(originIdx);
+      }
+    }
     G4int ih = analysisManager->CreateH1(id, title, nbins, vmin, vmax);
     analysisManager->SetH1Activation(ih, false);
   }

@@ -11,9 +11,9 @@
 /testhadr/det/setNbOfLayers 1
 /testhadr/det/setNbOfAbsor 4
 /testhadr/det/setAbsor 1 G4_Ag        40 nm
-/testhadr/det/setAbsor 2 PNDI-T10     75 um
+/testhadr/det/setAbsor 2 PNDI-T10     1 mm
 /testhadr/det/setAbsor 3 ITO         100 nm
-/testhadr/det/setAbsor 4 QuartzGlass 100 um
+/testhadr/det/setAbsor 4 QuartzGlass 3 mm
 /testhadr/det/setSizeYZ 15 mm
 #
 /testhadr/det/setBoxExternal 103 53 25 mm

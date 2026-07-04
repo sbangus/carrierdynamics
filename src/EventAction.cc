@@ -54,6 +54,7 @@ void EventAction::BeginOfEventAction(const G4Event*)
     fNeutronInteracted[k] = false;
     fEdepElectronGamma[k] = 0.;
     fEdepElectronIonic[k] = 0.;
+    for (G4int o = 0; o < kNbOrigin; ++o) fEdepByOrigin[k][o] = 0.;
   }
 
   // initialize EnergyLeakage per event
@@ -62,6 +63,7 @@ void EventAction::BeginOfEventAction(const G4Event*)
   fMonitorCrossedTrackIds.clear();
   fElectronLineage.clear();
   fTrackParticleName.clear();
+  fTrackOriginAbsor.clear();
 }
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
@@ -148,6 +150,32 @@ G4String EventAction::GetTrackParticleName(G4int trackId) const
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
 
+void EventAction::SetTrackOrigin(G4int trackId, G4int originAbsor)
+{
+  fTrackOriginAbsor[trackId] = originAbsor;
+}
+
+//....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
+
+G4int EventAction::GetTrackOrigin(G4int trackId) const
+{
+  const auto it = fTrackOriginAbsor.find(trackId);
+  if (it == fTrackOriginAbsor.end()) return 0;  // external / primary lineage
+  return it->second;
+}
+
+//....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
+
+void EventAction::SumEdepByOrigin(G4int depositAbsor, G4int originAbsor, G4double de)
+{
+  if (depositAbsor < 1 || depositAbsor > kMaxAbsor) return;
+  if (originAbsor < 0 || originAbsor >= kNbOrigin) return;
+  if (de <= 0.) return;
+  fEdepByOrigin[depositAbsor - 1][originAbsor] += de;
+}
+
+//....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
+
 void EventAction::AddTrackPathLength(G4int absorNum, G4double len)
 {
   if (absorNum < 1 || absorNum > kMaxAbsor || len <= 0.) return;
@@ -214,6 +242,16 @@ void EventAction::EndOfEventAction(const G4Event*)
     }
     if (fPrimaryEdep[idx] > 0.) {
       analysis->FillH1(PrimaryEdepId(k), fPrimaryEdep[idx]);
+    }
+
+    // Cross-absorber provenance: Edep in absorber k split by origin absorber
+    // (0 = external/primary, 1..nAbs = born in that absorber's lineage).
+    for (G4int o = 0; o <= nAbs; ++o) {
+      const G4double de = fEdepByOrigin[idx][o];
+      if (de > 0.) {
+        analysis->FillH1(EdepByOriginId(k, o), de);
+        run->SumEdepByOrigin(k, o, de);
+      }
     }
   }
   run->SumEnergies(EdepTot, fEnergyLeak[0], fEnergyLeak[1]);

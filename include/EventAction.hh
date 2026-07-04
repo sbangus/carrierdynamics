@@ -30,6 +30,7 @@
 #define EventAction_h 1
 
 #include "DetectorConstruction.hh"
+#include "HistoManager.hh"  // kMaxAbsor, kNbOrigin, histogram ID helpers
 
 #include "G4UserEventAction.hh"
 #include "globals.hh"
@@ -72,6 +73,14 @@ class EventAction : public G4UserEventAction
     void RegisterTrackParticle(G4int trackId, const G4String& particleName);
     G4String GetTrackParticleName(G4int trackId) const;
 
+    // Origin-absorber tag for cross-absorber energy-deposit provenance. A
+    // track's origin is the absorber where the earliest ancestor of its lineage
+    // was created (0 = external/primary lineage, i.e. never born in an
+    // absorber). Set once at the track's first step in SteppingAction.
+    void SetTrackOrigin(G4int trackId, G4int originAbsor);
+    G4int GetTrackOrigin(G4int trackId) const;
+    void SumEdepByOrigin(G4int depositAbsor, G4int originAbsor, G4double de);
+
     // Per-track path-length accumulation: sum of step lengths inside each
     // absorber for the track currently being transported. Cleared per track in
     // TrackingAction::PreUserTrackingAction and flushed (into per-particle,
@@ -97,6 +106,12 @@ class EventAction : public G4UserEventAction
     std::map<G4int, G4double> fTrackPathInAbsor;
     G4double fEdepElectronGamma[kMaxAbsor] = {0.};
     G4double fEdepElectronIonic[kMaxAbsor] = {0.};
+
+    // Cross-absorber Edep provenance (per event): fEdepByOrigin[d-1][o] is the
+    // energy deposited in absorber d by tracks whose lineage originated in
+    // absorber o (o = 0 -> external/primary). Origin tags are per track.
+    std::map<G4int, G4int> fTrackOriginAbsor;
+    G4double fEdepByOrigin[kMaxAbsor][kNbOrigin] = {{0.}};
 };
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
