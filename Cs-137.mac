@@ -14,7 +14,7 @@
 /testhadr/det/setNbOfLayers 1
 /testhadr/det/setNbOfAbsor 4
 /testhadr/det/setAbsor 1 G4_Ag        40 nm
-/testhadr/det/setAbsor 2 PNDI-T10     30 um
+/testhadr/det/setAbsor 2 PNDI-T10-BiOx     30 um
 /testhadr/det/setAbsor 3 ITO         100 nm
 /testhadr/det/setAbsor 4 QuartzGlass 1 mm
 /testhadr/det/setSizeY 8.5 mm

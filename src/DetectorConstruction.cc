@@ -188,6 +188,7 @@ void DetectorConstruction::DefineMaterials()
   G4Element* S = manager->FindOrBuildElement(16);
   G4Element* In = manager->FindOrBuildElement(49);
   G4Element* Sn = manager->FindOrBuildElement(50);
+  G4Element* Bi = manager->FindOrBuildElement(83);
 
   // Bound hydrogen for thermal neutron scattering kernels (HPT).
   // The element name "TS_H_of_Polyethylene" is recognized by
@@ -293,6 +294,24 @@ void DetectorConstruction::DefineMaterials()
   PNDI_B4C->AddMaterial(PNDI, fPNDI);
   PNDI_B4C->AddMaterial(B4C, fB4C);
 
+  // Bismuth oxide (Bi2O3), alpha phase; used as a 10 wt% filler in PNDI-T10-BiOx.
+  G4double massBi2O3 = 2. * 208.980 + 3. * 15.999;
+  G4Material* Bi2O3 = new G4Material("Bi2O3", density = 8.90 * g / cm3, ncomponents = 2);
+  Bi2O3->AddElement(Bi, 2. * 208.980 / massBi2O3);
+  Bi2O3->AddElement(O, 3. * 15.999 / massBi2O3);
+  Bi2O3->SetChemicalFormula("Bi_2O_3");
+
+  // PNDI-T10 loaded with 10 wt% Bi2O3
+  // 10 wt% means: for 100g of PNDI-T10, add 10g of Bi2O3 → total 110g
+  // mass fractions: PNDI = 100/110, Bi2O3 = 10/110
+  // Hydrogen in the PNDI component remains TS_H_of_Polyethylene (via AddMaterial).
+  G4double fBi2O3 = 10. / 110.;
+  G4double densityBlendBiOx = 1. / (fPNDI / 1.5 + fBi2O3 / 8.90) * g / cm3;
+  G4Material* PNDI_BiOx =
+    new G4Material("PNDI-T10-BiOx", densityBlendBiOx, ncomponents = 2);
+  PNDI_BiOx->AddMaterial(PNDI, fPNDI);
+  PNDI_BiOx->AddMaterial(Bi2O3, fBi2O3);
+
   // Indium Tin Oxide (ITO): 90% In2O3 + 10% SnO2 by mass
   G4double fIn2O3 = 0.90;
   G4double fSnO2 = 0.10;
@@ -327,7 +346,7 @@ void DetectorConstruction::DefineMaterials()
   // Polyethylene (C2H4)n — repeat unit C2H4, density for validation slabs.
   // Hydrogen is wired as TS_H_of_Polyethylene so the bound-atom
   // S(alpha,beta) thermal-scattering kernel (n < ~4 eV) is used in this
-  // organic material, consistent with PNDI-T10 / PNDI-T10-B4C.
+  // organic material, consistent with PNDI-T10 / PNDI-T10-B4C / PNDI-T10-BiOx.
   G4Material* polyethylene = new G4Material("polyethylene", density = 0.93 * g / cm3, ncomponents = 2);
   polyethylene->AddElement(C, natoms = 2);
   polyethylene->AddElement(H_TS_Poly, natoms = 4);
