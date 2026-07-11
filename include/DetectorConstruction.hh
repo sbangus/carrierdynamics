@@ -87,6 +87,17 @@ class DetectorConstruction : public G4VUserDetectorConstruction
     void SetEncasementOuter(G4double xExt, G4double yExt, G4double zExt);
     void SetEncasementWallThickness(G4double);
 
+    /// Optional solid slab (e.g. concrete shielding) flush against the bud box
+    /// -Z (back) exterior face, in the lab world. Same transverse X/Y as the
+    /// box; thickness and material set separately. Requires the bud box and is
+    /// incompatible with the encasement.
+    void SetBackSlabEnable(G4bool);
+    void SetBackSlabThickness(G4double);
+    void SetBackSlabMaterial(const G4String&);
+    /// Full transverse X/Y of the back slab. Pass 0 for either to revert that
+    /// dimension to the bud-box external size (the default).
+    void SetBackSlabTransverse(G4double fullX, G4double fullY);
+
     /// Cs-137 check-source envelope: hexagonal prism (axis || global +Z) with a
     /// central cylindrical bore. Used with /gps/pos/confine Cs137Source.
     void SetCs137SourceEnable(G4bool);
@@ -216,6 +227,15 @@ class DetectorConstruction : public G4VUserDetectorConstruction
     G4double fEncasementOuterZ = 0.;
     G4double fEncasementWallThickness = 0.;
 
+    // Optional slab (e.g. concrete shielding) flush against the bud box -Z
+    // (back) exterior face, in the lab world. Transverse X/Y match the box.
+    G4bool fBackSlabEnable = false;
+    G4double fBackSlabThickness = 0.;
+    G4Material* fBackSlabMaterial = nullptr;
+    // Full transverse sizes; 0 means "use the bud-box external size".
+    G4double fBackSlabFullX = 0.;
+    G4double fBackSlabFullY = 0.;
+
     // Optional moderator stack in the lab world between the bud box +Z exterior
     // face and the GPS plane. Layer 1 sits adjacent to the box; higher indices
     // stack toward +Z (source). Requires wall thickness > 0.
@@ -272,6 +292,11 @@ class DetectorConstruction : public G4VUserDetectorConstruction
     G4VPhysicalVolume* fPhysiEncasementAir = nullptr;
     G4LogicalVolume* fLogicPCShell = nullptr;
     G4VPhysicalVolume* fPhysiPCShell = nullptr;
+
+    // Concrete (or other) back slab flush against the bud box -Z exterior.
+    G4Box* fSolidBackSlab = nullptr;
+    G4LogicalVolume* fLogicBackSlab = nullptr;
+    G4VPhysicalVolume* fPhysiBackSlab = nullptr;
 
     // Cs-137 check source: hex shell (G4Polyhedra) minus central bore (G4Tubs).
     G4bool fCs137SourceEnable = false;

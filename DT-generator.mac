@@ -1,0 +1,86 @@
+# D-T generator neutron source: 14.1 MeV neutrons on the Al bud box + detector.
+#
+# Geometry: Al box + 4-absorber detector (as in Cs-137.mac), NO moderators and
+# NO encasement -- only air between the source and the box. The box is centred
+# at the origin, so its +Z (front) exterior face is at z = boxExternalZ/2 =
+# 12.5 mm. The source sits 22.86 cm (228.6 mm) from that front face, i.e. at
+# z = 12.5 mm + 228.6 mm = 241.1 mm.
+#
+# Source: 14.1 MeV D-T neutrons emitted from a 3.5 mm-radius circular disk,
+# isotropically into 4 pi (uncollimated generator approximation), with a
+# Gaussian energy spread (sigma = 0.16 MeV, ~0.375 MeV FWHM).
+#
+/control/verbose 1
+/run/verbose 1
+#
+/testhadr/det/setNbOfLayers 1
+/testhadr/det/setNbOfAbsor 4
+/testhadr/det/setAbsor 1 G4_Ag        40 nm
+/testhadr/det/setAbsor 2 PNDI-T10     50 um
+/testhadr/det/setAbsor 3 ITO         100 nm
+/testhadr/det/setAbsor 4 QuartzGlass 1 mm
+/testhadr/det/setSizeY 8.5 mm
+/testhadr/det/setSizeZ 11.5 mm
+#
+/testhadr/det/setBoxExternal 103 53 25 mm
+/testhadr/det/setBoxWallThickness 1.8 mm
+/testhadr/det/setDetectorStandoff 3 mm
+/testhadr/det/setBoxMaterial G4_Al
+/testhadr/det/setCavityMaterial G4_AIR
+/testhadr/det/setWorldMaterial G4_AIR
+/testhadr/det/setLabSize 2000 2000 2000 mm
+#
+# 18 inch (457.2 mm) concrete slab flush against the box back (-Z) face.
+# Same transverse footprint as the Al box (103 mm x 53 mm).
+/testhadr/det/setBackSlabEnable false
+/testhadr/det/setBackSlabMaterial G4_CONCRETE
+/testhadr/det/setBackSlabThickness 457.2 mm
+/testhadr/det/setBackSlabSize 600 400 mm
+#
+# Air-only path between source and box: no moderators, no encasement.
+/testhadr/det/setNbOfModeratorLayers 0
+/testhadr/det/setModeratorEnable false
+# Source 22.86 cm from the box front face (12.5 mm + 228.6 mm = 241.1 mm).
+/testhadr/det/setSourceStandoff 228.6 mm
+#
+/random/setSeeds 141001 141002
+/run/initialize
+#
+/analysis/setFileName DT-generator
+#
+/gps/particle neutron
+#
+# ----------------------------
+# Position distribution
+# 3.5 mm-radius circular disk, 22.86 cm from the box front face (z = 241.1 mm).
+# Disk lies in the x-y plane (normal along z), facing the detector.
+# ----------------------------
+/gps/pos/type Plane
+/gps/pos/shape Circle
+/gps/pos/radius 3.5 mm
+/gps/pos/centre 0 0 241.1 mm
+#
+# ----------------------------
+# Angular distribution
+# Physical uncollimated D-T generator approximation:
+# isotropic emission into 4pi
+# ----------------------------
+/gps/ang/type iso
+/gps/ang/mintheta 0.0 deg
+/gps/ang/maxtheta 180.0 deg
+/gps/ang/minphi 0.0 deg
+/gps/ang/maxphi 360.0 deg
+
+#
+# ----------------------------
+# Energy distribution
+# Gaussian approximation around 14.1 MeV
+# If 0.375 MeV is treated as FWHM:
+# sigma = 0.375 / 2.355 = 0.159 MeV
+# ----------------------------
+/gps/ene/type Gauss
+/gps/ene/mono 14.1 MeV
+/gps/ene/sigma 0.16 MeV
+#
+/run/printProgress 100000
+/run/beamOn 1000000

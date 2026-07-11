@@ -85,6 +85,10 @@ class DetectorMessenger : public G4UImessenger
     G4UIcmdWithABool* fEncasementEnableCmd = nullptr;
     G4UIcmdWith3VectorAndUnit* fEncasementOuterCmd = nullptr;
     G4UIcmdWithADoubleAndUnit* fEncasementWallCmd = nullptr;
+    G4UIcmdWithABool* fBackSlabEnableCmd = nullptr;
+    G4UIcmdWithADoubleAndUnit* fBackSlabThicknessCmd = nullptr;
+    G4UIcmdWithAString* fBackSlabMaterialCmd = nullptr;
+    G4UIcommand* fBackSlabSizeCmd = nullptr;
     G4UIcmdWithABool* fCs137SourceEnableCmd = nullptr;
     G4UIcmdWithABool* fSilverEpoxyBlobCmd = nullptr;
     G4UIcommand* fSilverEpoxyBlobSizeCmd = nullptr;

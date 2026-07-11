@@ -1,0 +1,92 @@
+# D-T generator neutron source: 14.1 MeV neutrons on the Al bud box + detector,
+# with a three-layer moderator stack between the source and the box.
+#
+# Geometry along +Z (neutron drift toward -Z):
+#   GPS disk (z = 393.5 mm) on the +Z face of the steel slab ->
+#   steel (5 in) -> air (203.2 mm) -> lead (2 in) -> Al box
+#   (+Z face at z = 12.5 mm) -> air cavity -> detector.
+#
+# Moderator stack (layer 1 adjacent to the box +Z face; higher indices toward
+# the source):
+#   layer 1 : G4_Pb   2 in  (50.8 mm)  -- right before the detector / Al box
+#   layer 2 : G4_AIR       (203.2 mm)  -- air gap between lead and steel
+#   layer 3 : G4_Fe   5 in  (127 mm)   -- flush with the source (+Z) side
+#
+# Source: 15 in (381 mm) from the Al box +Z (front) exterior face.
+#   stack height = Pb + air + steel = 381 mm = sourceStandoff
+#   GPS z = boxHalfZ (12.5 mm) + sourceStandoff (381 mm) = 393.5 mm
+#
+# Source: 14.1 MeV D-T neutrons from a 200 x 200 mm rectangle, collimated along
+# -Z toward the detector, Gaussian energy spread (sigma = 0.16 MeV).
+#
+/control/verbose 1
+/run/verbose 1
+#
+/testhadr/det/setNbOfLayers 1
+/testhadr/det/setNbOfAbsor 4
+/testhadr/det/setAbsor 1 G4_Ag        40 nm
+/testhadr/det/setAbsor 2 PNDI-T10     10 um
+/testhadr/det/setAbsor 3 ITO         100 nm
+/testhadr/det/setAbsor 4 QuartzGlass 1 mm
+/testhadr/det/setSizeY 8.5 mm
+/testhadr/det/setSizeZ 11.5 mm
+#
+/testhadr/det/setBoxExternal 103 53 25 mm
+/testhadr/det/setBoxWallThickness 1.8 mm
+/testhadr/det/setDetectorStandoff 3 mm
+/testhadr/det/setBoxMaterial G4_Al
+/testhadr/det/setCavityMaterial G4_AIR
+/testhadr/det/setWorldMaterial G4_AIR
+/testhadr/det/setLabSize 2000 2000 2000 mm
+#
+/testhadr/det/setBackSlabEnable false
+#
+# Three-layer moderator: Pb at the box, air gap, steel at the source.
+/testhadr/det/setNbOfModeratorLayers 2
+#/testhadr/det/setModeratorLayer 1 G4_Pb 50.8 mm
+#/testhadr/det/setModeratorLayer 2 G4_AIR 315.2 mm
+/testhadr/det/setModeratorLayer 1 G4_AIR 366 mm
+/testhadr/det/setModeratorLayer 2 G4_Fe 15 mm
+/testhadr/det/setModeratorEnable true
+/testhadr/det/setModeratorTransverse 200 200 mm
+/testhadr/det/setModeratorGap 0 mm
+# 15 in from the Al box front (+Z) face; equals Pb + air + steel = 381 mm.
+/testhadr/det/setSourceStandoff 381 mm
+#
+/random/setSeeds 141001 141002
+/run/initialize
+#
+/analysis/setFileName DT-generator-moderated
+#
+/gps/particle neutron
+#
+# ----------------------------
+# Position distribution
+# Planar source on the +Z face: 200 x 200 mm rectangle.
+# Centre z = box half-depth (12.5 mm) + sourceStandoff (381 mm) = 393.5 mm.
+# ----------------------------
+/gps/pos/type Plane
+/gps/pos/shape Rectangle
+/gps/pos/halfx 100 mm
+/gps/pos/halfy 100 mm
+/gps/pos/centre 0 0 393.5 mm
+#
+# Collimated beam along -Z (toward detector).
+/gps/ang/type iso
+/gps/ang/rot1 1 0 0
+/gps/ang/rot2 0 1 0
+/gps/ang/mintheta 0 deg
+/gps/ang/maxtheta 0 deg
+#
+# ----------------------------
+# Energy distribution
+# Gaussian approximation around 14.1 MeV
+# If 0.375 MeV is treated as FWHM:
+# sigma = 0.375 / 2.355 = 0.159 MeV
+# ----------------------------
+/gps/ene/type Gauss
+/gps/ene/mono 14.1 MeV
+/gps/ene/sigma 0.16 MeV
+#
+/run/printProgress 1000000
+/run/beamOn 40000000

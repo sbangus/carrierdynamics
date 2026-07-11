@@ -604,6 +604,51 @@ G4VPhysicalVolume* DetectorConstruction::Construct()
   }
 
   //
+  // Optional back slab (e.g. concrete shielding) flush against the bud box -Z
+  // (back) exterior face, i.e. on the side opposite the source. Same transverse
+  // X/Y as the box. Placed in the lab world; requires the bud box and is not
+  // built together with the encasement (which would enclose the box).
+  //
+  if (fBackSlabEnable) {
+    if (fBoxWallThickness <= 0.) {
+      G4cout << "\n ---> Warning from DetectorConstruction: back slab requested but "
+                "bud box is disabled (wall thickness = 0). Back slab not built."
+             << G4endl;
+    }
+    else if (encActive) {
+      G4cout << "\n ---> Warning from DetectorConstruction: back slab is not supported "
+                "together with the encasement. Back slab not built."
+             << G4endl;
+    }
+    else if (fBackSlabThickness <= 0.) {
+      G4cout << "\n ---> Warning from DetectorConstruction: back slab thickness must be "
+                "positive. Back slab not built."
+             << G4endl;
+    }
+    else {
+      G4Material* slabMat = fBackSlabMaterial;
+      if (slabMat == nullptr) {
+        slabMat = G4NistManager::Instance()->FindOrBuildMaterial("G4_CONCRETE");
+      }
+      // Box back (-Z) exterior face in world coordinates (budOffsetZ = 0 when
+      // not encased). Slab +Z face is flush with it; slab extends toward -Z.
+      const G4double boxBackZ = budOffsetZ - 0.5 * fBoxExternalZ;
+      const G4double slabCenterZ = boxBackZ - 0.5 * fBackSlabThickness;
+
+      // Transverse footprint: configurable, defaulting to the box externals.
+      const G4double slabX = (fBackSlabFullX > 0. ? fBackSlabFullX : fBoxExternalX);
+      const G4double slabY = (fBackSlabFullY > 0. ? fBackSlabFullY : fBoxExternalY);
+
+      fSolidBackSlab = new G4Box("BackSlab", slabX / 2, slabY / 2,
+                                 fBackSlabThickness / 2);
+      fLogicBackSlab = new G4LogicalVolume(fSolidBackSlab, slabMat, "BackSlab");
+      fPhysiBackSlab = new G4PVPlacement(0, G4ThreeVector(0., 0., slabCenterZ),
+                                         fLogicBackSlab, "BackSlab", fLogicWorld,
+                                         false, 0);
+    }
+  }
+
+  //
   // Moderator stack (+Z of bud box or, if encased, +Z of polycarbonate shell):
   // layer 1 adjacent to the box +Z face; each subsequent layer stacks toward +Z
   // (source). Primary travels toward -Z; GPS sits at z = boxHalfZ + (PC wall
@@ -1033,6 +1078,17 @@ void DetectorConstruction::PrintCalorParameters()
   else {
     G4cout << " Polycarbonate encasement : disabled" << G4endl;
   }
+  if (fPhysiBackSlab != nullptr) {
+    G4cout << " Back slab : enabled   "
+           << G4BestUnit(2. * fSolidBackSlab->GetXHalfLength(), "Length") << " x "
+           << G4BestUnit(2. * fSolidBackSlab->GetYHalfLength(), "Length") << " x "
+           << G4BestUnit(2. * fSolidBackSlab->GetZHalfLength(), "Length")
+           << " (flush on box -Z face)   material = "
+           << fLogicBackSlab->GetMaterial()->GetName() << G4endl;
+  }
+  else {
+    G4cout << " Back slab : disabled" << G4endl;
+  }
   if (fPhysiCs137Source != nullptr) {
     const G4ThreeVector pos = fPhysiCs137Source->GetTranslation();
     G4cout << " Cs-137 check source : enabled   hex side = 7 mm   length = 1 cm"
@@ -1340,6 +1396,41 @@ void DetectorConstruction::SetEncasementWallThickness(G4double t)
     return;
   }
   fEncasementWallThickness = t;
+}
+
+//....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
+
+void DetectorConstruction::SetBackSlabEnable(G4bool on) { fBackSlabEnable = on; }
+
+void DetectorConstruction::SetBackSlabThickness(G4double t)
+{
+  if (t <= 0.) {
+    G4cout << "\n ---> warning from SetBackSlabThickness: thickness must be > 0."
+           << G4endl;
+    return;
+  }
+  fBackSlabThickness = t;
+}
+
+void DetectorConstruction::SetBackSlabMaterial(const G4String& name)
+{
+  G4Material* mat = G4Material::GetMaterial(name, false);
+  if (mat == nullptr) {
+    mat = G4NistManager::Instance()->FindOrBuildMaterial(name);
+  }
+  if (mat == nullptr) {
+    G4cout << "\n ---> warning from SetBackSlabMaterial: material '" << name
+           << "' not found. Command refused." << G4endl;
+    return;
+  }
+  fBackSlabMaterial = mat;
+}
+
+void DetectorConstruction::SetBackSlabTransverse(G4double fullX, G4double fullY)
+{
+  // 0 (or negative) reverts that dimension to the bud-box external size.
+  fBackSlabFullX = (fullX > 0. ? fullX : 0.);
+  fBackSlabFullY = (fullY > 0. ? fullY : 0.);
 }
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......

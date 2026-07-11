@@ -1,0 +1,101 @@
+# Same configuration as DT-generator.mac (14.1 MeV D-T neutron source, 22.86 cm
+# of air between the source and the Al box front face), with visualization and
+# no /run/beamOn. Run interactively: ./Hadr05 then
+# /control/execute DT-generator-vis.mac then /run/beamOn N
+#
+# Geometry along +Z (neutrons drift toward -Z): GPS disk in lab/air (z = 241.1
+# mm) -> air -> aluminum box (+Z face at z = 12.5 mm) -> air cavity -> detector.
+#
+/control/verbose 1
+/run/verbose 1
+#
+/testhadr/det/setNbOfLayers 1
+/testhadr/det/setNbOfAbsor 4
+/testhadr/det/setAbsor 1 G4_Ag        40 nm
+/testhadr/det/setAbsor 2 PNDI-T10     30 um
+/testhadr/det/setAbsor 3 ITO         100 nm
+/testhadr/det/setAbsor 4 QuartzGlass 1 mm
+/testhadr/det/setSizeY 8.5 mm
+/testhadr/det/setSizeZ 11.5 mm
+#
+/testhadr/det/setBoxExternal 103 53 25 mm
+/testhadr/det/setBoxWallThickness 1.8 mm
+/testhadr/det/setDetectorStandoff 3 mm
+/testhadr/det/setBoxMaterial G4_Al
+/testhadr/det/setCavityMaterial G4_AIR
+/testhadr/det/setWorldMaterial G4_AIR
+/testhadr/det/setLabSize 2000 2000 2000 mm
+#
+# 18 inch (457.2 mm) concrete slab flush against the box back (-Z) face.
+# Same transverse footprint as the Al box (103 mm x 53 mm).
+/testhadr/det/setBackSlabEnable true
+/testhadr/det/setBackSlabMaterial G4_CONCRETE
+/testhadr/det/setBackSlabThickness 457.2 mm
+/testhadr/det/setBackSlabSize 600 400 mm
+#
+# Air-only path between source and box: no moderators, no encasement.
+/testhadr/det/setNbOfModeratorLayers 0
+/testhadr/det/setModeratorEnable false
+# Source 22.86 cm from the box front face (12.5 mm + 228.6 mm = 241.1 mm).
+/testhadr/det/setSourceStandoff 228.6 mm
+#
+/run/numberOfThreads 1
+/run/initialize
+#
+/gps/particle neutron
+#
+# ----------------------------
+# Position distribution
+# 3.5 mm-radius circular disk, 22.86 cm from the box front face (z = 241.1 mm).
+# ----------------------------
+/gps/pos/type Plane
+/gps/pos/shape Circle
+/gps/pos/radius 3.5 mm
+/gps/pos/centre 0 0 241.1 mm
+#
+# ----------------------------
+# Angular distribution
+# Physical uncollimated D-T generator approximation:
+# isotropic emission into 4pi
+# ----------------------------
+/gps/ang/type iso
+/gps/ang/mintheta 0.0 deg
+/gps/ang/maxtheta 180.0 deg
+/gps/ang/minphi 0.0 deg
+/gps/ang/maxphi 360.0 deg
+#
+# ----------------------------
+# Energy distribution
+# Gaussian approximation around 14.1 MeV
+# If 0.375 MeV is treated as FWHM:
+# sigma = 0.375 / 2.355 = 0.159 MeV
+# ----------------------------
+/gps/ene/type Gauss
+/gps/ene/mono 14.1 MeV
+/gps/ene/sigma 0.16 MeV
+#
+/run/printProgress 1000
+#
+# Visualization-only: inspect geometry and trajectories. No /run/beamOn.
+/vis/open
+/vis/viewer/set/autoRefresh false
+/vis/verbose errors
+/vis/drawVolume
+/vis/geometry/set/visibility World 0 false
+/vis/geometry/set/visibility world 0 false
+/vis/viewer/set/style wireframe
+/vis/viewer/set/viewpointThetaPhi 65 35 deg
+/vis/viewer/zoom 2.0
+/vis/scene/add/axes 0 0 0 20 mm
+/vis/scene/add/trajectories smooth
+/vis/modeling/trajectories/create/drawByParticleID
+/vis/modeling/trajectories/drawByParticleID-0/set neutron cyan
+/vis/modeling/trajectories/drawByParticleID-0/set proton red
+/vis/modeling/trajectories/drawByParticleID-0/set gamma yellow
+/vis/modeling/trajectories/drawByParticleID-0/set e- green
+/vis/modeling/trajectories/drawByParticleID-0/set e+ magenta
+/vis/modeling/trajectories/drawByParticleID-0/set alpha orange
+/tracking/storeTrajectory 1
+/vis/scene/endOfEventAction accumulate
+/vis/viewer/set/autoRefresh true
+/vis/verbose warnings

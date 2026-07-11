@@ -87,6 +87,12 @@ set(Hadr05_SCRIPTS
     silver-epoxy-test.mac
     silver-epoxy-test-vis.mac
     Cs-137-silver-epoxy.mac
+    DT-generator.mac
+    DT-generator-vis.mac
+    DT-generator-moderated.mac
+    DT-generator-moderated-vis.mac
+    DT-generator-moderated-batch-Pb.mac
+    DT-generator-moderated-batch-noPb.mac
   )
 
 foreach(_script ${Hadr05_SCRIPTS})

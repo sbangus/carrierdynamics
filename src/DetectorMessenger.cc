@@ -334,6 +334,50 @@ DetectorMessenger::DetectorMessenger(DetectorConstruction* Det) : fDetector(Det)
   fEncasementWallCmd->AvailableForStates(G4State_PreInit);
   fEncasementWallCmd->SetToBeBroadcasted(false);
 
+  fBackSlabEnableCmd = new G4UIcmdWithABool("/testhadr/det/setBackSlabEnable", this);
+  fBackSlabEnableCmd->SetGuidance(
+    "If true, build a solid slab (default G4_CONCRETE) flush against the bud "
+    "box -Z (back) exterior face, on the side opposite the source. Same "
+    "transverse X/Y as the box; thickness via setBackSlabThickness. Requires "
+    "the bud box and is incompatible with the encasement.");
+  fBackSlabEnableCmd->SetParameterName("Enable", false);
+  fBackSlabEnableCmd->AvailableForStates(G4State_PreInit);
+  fBackSlabEnableCmd->SetToBeBroadcasted(false);
+
+  fBackSlabThicknessCmd =
+    new G4UIcmdWithADoubleAndUnit("/testhadr/det/setBackSlabThickness", this);
+  fBackSlabThicknessCmd->SetGuidance("Thickness (along Z) of the back slab.");
+  fBackSlabThicknessCmd->SetParameterName("Thickness", false);
+  fBackSlabThicknessCmd->SetUnitCategory("Length");
+  fBackSlabThicknessCmd->SetRange("Thickness>0.");
+  fBackSlabThicknessCmd->AvailableForStates(G4State_PreInit);
+  fBackSlabThicknessCmd->SetToBeBroadcasted(false);
+
+  fBackSlabMaterialCmd = new G4UIcmdWithAString("/testhadr/det/setBackSlabMaterial", this);
+  fBackSlabMaterialCmd->SetGuidance("Material of the back slab (default G4_CONCRETE).");
+  fBackSlabMaterialCmd->SetParameterName("choice", false);
+  fBackSlabMaterialCmd->AvailableForStates(G4State_PreInit);
+  fBackSlabMaterialCmd->SetToBeBroadcasted(false);
+
+  fBackSlabSizeCmd = new G4UIcommand("/testhadr/det/setBackSlabSize", this);
+  fBackSlabSizeCmd->SetGuidance(
+    "Full back-slab transverse sizes: width (X) height (Y) unit. Use two zeros "
+    "with a unit to revert to the bud-box external X x Y.");
+  G4UIparameter* slabXP = new G4UIparameter("fullX", 'd', false);
+  slabXP->SetGuidance("full width X");
+  slabXP->SetParameterRange("fullX>=0.");
+  fBackSlabSizeCmd->SetParameter(slabXP);
+  G4UIparameter* slabYP = new G4UIparameter("fullY", 'd', false);
+  slabYP->SetGuidance("full height Y");
+  slabYP->SetParameterRange("fullY>=0.");
+  fBackSlabSizeCmd->SetParameter(slabYP);
+  G4UIparameter* slabUnt = new G4UIparameter("unit", 's', false);
+  slabUnt->SetGuidance("length unit");
+  slabUnt->SetParameterCandidates(G4UIcommand::UnitsList(G4UIcommand::CategoryOf("mm")));
+  fBackSlabSizeCmd->SetParameter(slabUnt);
+  fBackSlabSizeCmd->AvailableForStates(G4State_PreInit);
+  fBackSlabSizeCmd->SetToBeBroadcasted(false);
+
   fCs137SourceEnableCmd = new G4UIcmdWithABool("/testhadr/det/setCs137SourceEnable", this);
   fCs137SourceEnableCmd->SetGuidance(
     "If true, build the Cs-137 check-source envelope in the lab world: a regular "
@@ -404,6 +448,10 @@ DetectorMessenger::~DetectorMessenger()
   delete fEncasementEnableCmd;
   delete fEncasementOuterCmd;
   delete fEncasementWallCmd;
+  delete fBackSlabEnableCmd;
+  delete fBackSlabThicknessCmd;
+  delete fBackSlabMaterialCmd;
+  delete fBackSlabSizeCmd;
   delete fCs137SourceEnableCmd;
   delete fSilverEpoxyBlobCmd;
   delete fSilverEpoxyBlobSizeCmd;
@@ -536,6 +584,33 @@ void DetectorMessenger::SetNewValue(G4UIcommand* command, G4String newValue)
   if (command == fEncasementOuterCmd) {
     G4ThreeVector v = fEncasementOuterCmd->GetNew3VectorValue(newValue);
     fDetector->SetEncasementOuter(v.x(), v.y(), v.z());
+  }
+
+  if (command == fBackSlabEnableCmd) {
+    fDetector->SetBackSlabEnable(G4UIcmdWithABool::GetNewBoolValue(newValue.c_str()));
+    return;
+  }
+
+  if (command == fBackSlabThicknessCmd) {
+    fDetector->SetBackSlabThickness(fBackSlabThicknessCmd->GetNewDoubleValue(newValue));
+    return;
+  }
+
+  if (command == fBackSlabMaterialCmd) {
+    fDetector->SetBackSlabMaterial(newValue);
+    return;
+  }
+
+  if (command == fBackSlabSizeCmd) {
+    G4double x = 0.;
+    G4double y = 0.;
+    G4String unt;
+    std::istringstream is(newValue);
+    is >> x >> y >> unt;
+    x *= G4UIcommand::ValueOf(unt);
+    y *= G4UIcommand::ValueOf(unt);
+    fDetector->SetBackSlabTransverse(x, y);
+    return;
   }
 
   if (command == fEncasementWallCmd) {
