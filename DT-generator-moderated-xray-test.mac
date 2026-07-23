@@ -1,0 +1,81 @@
+# Short dual-source verification: air + Fe moderator stack.
+# Neutron at Fe +Z (393.5 mm); gamma at Fe -Z (378.5 mm).
+#
+/control/verbose 0
+/run/verbose 0
+#
+/testhadr/det/setNbOfLayers 1
+/testhadr/det/setNbOfAbsor 4
+/testhadr/det/setAbsor 1 G4_Ag        40 nm
+/testhadr/det/setAbsor 2 PNDI-T10     10 um
+/testhadr/det/setAbsor 3 ITO         100 nm
+/testhadr/det/setAbsor 4 QuartzGlass 1 mm
+/testhadr/det/setSizeY 8.5 mm
+/testhadr/det/setSizeZ 11.5 mm
+#
+/testhadr/det/setBoxExternal 103 53 25 mm
+/testhadr/det/setBoxWallThickness 1.8 mm
+/testhadr/det/setDetectorStandoff 3 mm
+/testhadr/det/setBoxMaterial G4_Al
+/testhadr/det/setCavityMaterial G4_AIR
+/testhadr/det/setWorldMaterial G4_AIR
+/testhadr/det/setLabSize 2000 2000 2000 mm
+/testhadr/det/setBackSlabEnable false
+#
+/testhadr/det/setNbOfModeratorLayers 2
+/testhadr/det/setModeratorLayer 1 G4_AIR 366 mm
+/testhadr/det/setModeratorLayer 2 G4_Fe 15 mm
+/testhadr/det/setModeratorEnable true
+/testhadr/det/setModeratorTransverse 200 200 mm
+/testhadr/det/setModeratorGap 0 mm
+/testhadr/det/setSourceStandoff 381 mm
+#
+/random/setSeeds 141001 141002
+/run/initialize
+#
+/analysis/setFileName DT-generator-moderated-xray-test
+#
+# --- Source 1: D-T neutrons at +Z face of Fe ---
+/gps/source/intensity 1.0
+/gps/particle neutron
+/gps/pos/type Plane
+/gps/pos/shape Rectangle
+/gps/pos/halfx 100 mm
+/gps/pos/halfy 100 mm
+/gps/pos/centre 0 0 393.5 mm
+/gps/ang/type iso
+/gps/ang/rot1 1 0 0
+/gps/ang/rot2 0 1 0
+/gps/ang/mintheta 0 deg
+/gps/ang/maxtheta 0 deg
+/gps/ene/type Gauss
+/gps/ene/mono 14.1 MeV
+/gps/ene/sigma 0.16 MeV
+#
+# --- Source 2: gamma at -Z face of Fe ---
+/gps/source/add 12.5
+/gps/particle gamma
+/gps/ene/type Arb
+/gps/hist/type arb
+/gps/hist/point 0.020 0.05
+/gps/hist/point 0.040 0.55
+/gps/hist/point 0.060 0.95
+/gps/hist/point 0.065 1.00
+/gps/hist/point 0.070 0.98
+/gps/hist/point 0.090 0.60
+/gps/hist/point 0.110 0.35
+/gps/hist/point 0.130 0.12
+/gps/hist/inter Lin
+/gps/pos/type Plane
+/gps/pos/shape Rectangle
+/gps/pos/halfx 100 mm
+/gps/pos/halfy 100 mm
+/gps/pos/centre 0 0 378.5 mm
+/gps/ang/type cos
+/gps/ang/rot1 1 0 0
+/gps/ang/rot2 0 1 0
+/gps/ang/mintheta 0 deg
+/gps/ang/maxtheta 90 deg
+#
+/run/printProgress 1000
+/run/beamOn 10000

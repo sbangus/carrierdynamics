@@ -92,6 +92,17 @@ class DetectorMessenger : public G4UImessenger
     G4UIcmdWithABool* fCs137SourceEnableCmd = nullptr;
     G4UIcmdWithABool* fSilverEpoxyBlobCmd = nullptr;
     G4UIcommand* fSilverEpoxyBlobSizeCmd = nullptr;
+
+    // Per-absorber LET-scoring configuration.
+    G4UIcommand* fChargeActiveCmd = nullptr;      // setChargeActive <i> <bool>
+    G4UIcommand* fPairCreationCmd = nullptr;      // setPairCreationEnergy <i> <val> <unit>
+
+    // Convergence controls + StepLET gating.
+    G4UIdirectory* fLetDir = nullptr;
+    G4UIcmdWithADoubleAndUnit* fAbsorberRangeCutCmd = nullptr;
+    G4UIcmdWithADoubleAndUnit* fAbsorberMaxStepCmd = nullptr;
+    G4UIcmdWithABool* fWriteStepNtupleCmd = nullptr;
+    G4UIcmdWithAnInteger* fMaxStepEventsCmd = nullptr;
 };
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......

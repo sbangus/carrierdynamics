@@ -1,23 +1,26 @@
 # D-T generator neutron source: 14.1 MeV neutrons on the Al bud box + detector,
 # with a three-layer moderator stack between the source and the box.
 #
-# Geometry along +Z (neutron drift toward -Z):
-#   GPS disk (z = 393.5 mm) on the +Z face of the steel slab ->
-#   steel (5 in) -> air (203.2 mm) -> lead (2 in) -> Al box
-#   (+Z face at z = 12.5 mm) -> air cavity -> detector.
+# Geometry along +Z (primary travel toward -Z / detector):
+#   neutron GPS (z = 393.5 mm, +Z of Fe) ->
+#   Fe moderator (378.5-393.5 mm) ->
+#   gamma GPS (z = 378.5 mm, -Z face of Fe) ->
+#   air (12.5-378.5 mm) -> Al box (+Z face at 12.5 mm) -> detector.
 #
 # Moderator stack (layer 1 adjacent to the box +Z face; higher indices toward
 # the source):
-#   layer 1 : G4_Pb   2 in  (50.8 mm)  -- right before the detector / Al box
-#   layer 2 : G4_AIR       (203.2 mm)  -- air gap between lead and steel
-#   layer 3 : G4_Fe   5 in  (127 mm)   -- flush with the source (+Z) side
+#   layer 1 : G4_AIR  366 mm
+#   layer 2 : G4_Fe    15 mm  -- outermost layer toward the neutron source
 #
-# Source: 15 in (381 mm) from the Al box +Z (front) exterior face.
-#   stack height = Pb + air + steel = 381 mm = sourceStandoff
-#   GPS z = boxHalfZ (12.5 mm) + sourceStandoff (381 mm) = 393.5 mm
+# Neutron source: on the +Z exterior face of the Fe layer.
+#   z = boxHalfZ (12.5 mm) + sourceStandoff (381 mm) = 393.5 mm
 #
-# Source: 14.1 MeV D-T neutrons from a 200 x 200 mm rectangle, collimated along
-# -Z toward the detector, Gaussian energy spread (sigma = 0.16 MeV).
+# Gamma source: on the -Z face of Fe (detector side of the steel slab).
+#   z = 12.5 mm + air layer thickness (366 mm) = 378.5 mm
+#
+# Source 1: 14.1 MeV D-T neutrons, collimated along -Z, Gaussian spread.
+# Source 2: x-ray / gamma, Arb 20-130 keV (peak ~65 keV), cos toward -Z.
+#   Mixed dual-source: I_neutron=1.0, I_gamma=12.5, N_n0=40e6, beamOn=540e6
 #
 /control/verbose 1
 /run/verbose 1
@@ -41,7 +44,7 @@
 #
 /testhadr/det/setBackSlabEnable false
 #
-# Three-layer moderator: Pb at the box, air gap, steel at the source.
+# Two-layer moderator: air gap, Fe at the source (+Z) side.
 /testhadr/det/setNbOfModeratorLayers 2
 #/testhadr/det/setModeratorLayer 1 G4_Pb 50.8 mm
 #/testhadr/det/setModeratorLayer 2 G4_AIR 315.2 mm
@@ -58,6 +61,8 @@
 #
 /analysis/setFileName DT-generator-moderated
 #
+# --- Source 1: D-T neutrons (intensity 1.0) ---
+/gps/source/intensity 1.0
 /gps/particle neutron
 #
 # ----------------------------
@@ -88,5 +93,30 @@
 /gps/ene/mono 14.1 MeV
 /gps/ene/sigma 0.16 MeV
 #
+# --- Source 2: x-ray / gamma (intensity 12.5) ---
+/gps/source/add 12.5
+/gps/particle gamma
+/gps/ene/type Arb
+/gps/hist/type arb
+/gps/hist/point 0.020 0.05
+/gps/hist/point 0.040 0.55
+/gps/hist/point 0.060 0.95
+/gps/hist/point 0.065 1.00
+/gps/hist/point 0.070 0.98
+/gps/hist/point 0.090 0.60
+/gps/hist/point 0.110 0.35
+/gps/hist/point 0.130 0.12
+/gps/hist/inter Lin
+/gps/pos/type Plane
+/gps/pos/shape Rectangle
+/gps/pos/halfx 100 mm
+/gps/pos/halfy 100 mm
+/gps/pos/centre 0 0 378.5 mm
+/gps/ang/type cos
+/gps/ang/rot1 1 0 0
+/gps/ang/rot2 0 1 0
+/gps/ang/mintheta 0 deg
+/gps/ang/maxtheta 90 deg
+#
 /run/printProgress 1000000
-/run/beamOn 40000000
+/run/beamOn 540000000

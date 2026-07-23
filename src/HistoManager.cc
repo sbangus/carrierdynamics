@@ -32,6 +32,78 @@
 
 #include "G4UnitsTable.hh"
 
+#include <string>
+
+namespace {
+
+// Decode a LET H1 ID (kMaxHisto .. kMaxHistoLet-1) into a descriptive title.
+G4String LetH1Title(G4int k)
+{
+  auto perCat = [](const G4String& base, G4int relBase) {
+    G4int rel = relBase;
+    G4int a = rel / kNbDepositCategories + 1;
+    G4int c = rel % kNbDepositCategories;
+    return base + ", absorber " + std::to_string(a) + ", " + DepositCategoryName(c);
+  };
+
+  if (k >= kLetStepCountBase && k < kLetStepEWeightedBase)
+    return perCat("LETdep step-count spectrum", k - kLetStepCountBase);
+  if (k >= kLetStepEWeightedBase && k < kLetCalcEWeightedBase)
+    return perCat("LETdep Eion-weighted spectrum", k - kLetStepEWeightedBase);
+  if (k >= kLetCalcEWeightedBase && k < kTrackEionCatBase)
+    return perCat("LETcalc Eion-weighted spectrum", k - kLetCalcEWeightedBase);
+  if (k >= kTrackEionCatBase && k < kTrackLetCatBase)
+    return perCat("Track Eion", k - kTrackEionCatBase);
+  if (k >= kTrackLetCatBase && k < kTrackDepthSpanCatBase)
+    return perCat("Track LET", k - kTrackLetCatBase);
+  if (k >= kTrackDepthSpanCatBase && k < kEionEventAllBase)
+    return perCat("Track depth span", k - kTrackDepthSpanCatBase);
+
+  auto perAbs = [](const G4String& base, G4int rel) {
+    return base + ", absorber " + std::to_string(rel + 1);
+  };
+  if (k >= kEionEventAllBase && k < kEionEventHitBase)
+    return perAbs("Eion per event (all events, incl. zero)", k - kEionEventAllBase);
+  if (k >= kEionEventHitBase && k < kNielEventBase)
+    return perAbs("Eion per event (hit-only)", k - kEionEventHitBase);
+  if (k >= kNielEventBase && k < kLetTEventBase)
+    return perAbs("NIEL per event", k - kNielEventBase);
+  if (k >= kLetTEventBase && k < kLetDdepEventBase)
+    return perAbs("Event track-length-averaged LET", k - kLetTEventBase);
+  if (k >= kLetDdepEventBase && k < kLetDcalcEventBase)
+    return perAbs("Event Eion-weighted Ldep", k - kLetDdepEventBase);
+  if (k >= kLetDcalcEventBase && k < kLetMaxEventBase)
+    return perAbs("Event Eion-weighted Lcalc", k - kLetDcalcEventBase);
+  if (k >= kLetMaxEventBase && k < kFracAbove1Base)
+    return perAbs("Event maximum step LET", k - kLetMaxEventBase);
+  if (k >= kFracAbove1Base && k < kFracAbove2Base)
+    return perAbs("Eion fraction Lcalc>=10 keV/um", k - kFracAbove1Base);
+  if (k >= kFracAbove2Base && k < kFracAbove3Base)
+    return perAbs("Eion fraction Lcalc>=100 keV/um", k - kFracAbove2Base);
+  if (k >= kFracAbove3Base && k < kEionDepthBase)
+    return perAbs("Eion fraction Lcalc>=1000 keV/um", k - kFracAbove3Base);
+  if (k >= kEionDepthBase && k < kEionNormDepthBase)
+    return perAbs("dEion/dz absolute depth profile", k - kEionDepthBase);
+  if (k >= kEionNormDepthBase && k < kTrackContainBase)
+    return perAbs("dEion/du normalized depth profile", k - kEionNormDepthBase);
+  if (k >= kTrackContainBase && k < kMaxHistoLet)
+    return perAbs("Track containment (0=unk,1=cont,2=front,3=back,4=lat,5=multi)",
+                  k - kTrackContainBase);
+
+  return "letH" + std::to_string(k);
+}
+
+// H2 family index (0..7) and absorber -> descriptive name / title.
+const char* H2FamilyTag(G4int fam)
+{
+  static const char* tags[8] = {
+      "evtEionVsLetCalc", "evtEionVsLetDep", "letCalcVsDepth", "letDepVsDepth",
+      "letCalcVsKE",      "trkEionVsLetCalc", "trkEionVsLetDep", "depthVsTransverse"};
+  return (fam >= 0 && fam < 8) ? tags[fam] : "h2";
+}
+
+}  // namespace
+
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
 
 HistoManager::HistoManager()
@@ -225,4 +297,135 @@ void HistoManager::Book()
     G4int ih = analysisManager->CreateH1(id, title, nbins, vmin, vmax);
     analysisManager->SetH1Activation(ih, false);
   }
+
+  // -------------------------------------------------------------------------
+  // LET / track-structure H1 histograms (IDs kMaxHisto .. kMaxHistoLet-1).
+  // Created inactive with placeholder binning; Run::Run() reconfigures binning
+  // and activates the ones belonging to charge-active absorbers.
+  // -------------------------------------------------------------------------
+  for (G4int k = kMaxHisto; k < kMaxHistoLet; ++k) {
+    G4int ih = analysisManager->CreateH1(std::to_string(k), LetH1Title(k),
+                                         nbins, vmin, vmax);
+    analysisManager->SetH1Activation(ih, false);
+  }
+
+  // -------------------------------------------------------------------------
+  // LET H2 histograms (independent H2 ID space). Created in family-major,
+  // absorber-minor order so the sequential H2 IDs match the H2XxxId() helpers.
+  // Placeholder binning; Run::Run() reconfigures/activates active absorbers.
+  // -------------------------------------------------------------------------
+  for (G4int fam = 0; fam < 8; ++fam) {
+    for (G4int a = 1; a <= kMaxAbsor; ++a) {
+      const G4String name =
+          G4String(H2FamilyTag(fam)) + "_abs" + std::to_string(a);
+      G4int ih = analysisManager->CreateH2(name, name, 10, 0., 1., 10, 0., 1.);
+      analysisManager->SetH2Activation(ih, false);
+    }
+  }
+
+  // -------------------------------------------------------------------------
+  // LET ROOT ntuples. Enable merging BEFORE creating them (and before the file
+  // is opened in RunAction::BeginOfRunAction) so per-thread ntuples are merged
+  // into a single set in the master file. Column order here MUST match the fill
+  // order in EventAction / TrackingAction / SteppingAction.
+  // -------------------------------------------------------------------------
+  // Column-wise (the default) produces one named ROOT branch per column, which
+  // is what ROOT/uproot analysis expects; row-wise packs everything into a
+  // single opaque branch that downstream tools cannot split by column.
+  analysisManager->SetNtupleMerging(true);
+
+  // EventLET (id 0): one row per event per charge-active absorber.
+  analysisManager->CreateNtuple("EventLET", "Event-level LET scoring");
+  analysisManager->CreateNtupleIColumn("runID");
+  analysisManager->CreateNtupleIColumn("eventID");
+  analysisManager->CreateNtupleIColumn("absorberID");
+  analysisManager->CreateNtupleIColumn("primaryPDG");
+  analysisManager->CreateNtupleDColumn("primaryEnergy_MeV");
+  analysisManager->CreateNtupleDColumn("trackWeight");
+  analysisManager->CreateNtupleDColumn("edep_keV");
+  analysisManager->CreateNtupleDColumn("eion_keV");
+  analysisManager->CreateNtupleDColumn("niel_keV");
+  analysisManager->CreateNtupleDColumn("chargedPath_um");
+  analysisManager->CreateNtupleDColumn("letT_keV_per_um");
+  analysisManager->CreateNtupleDColumn("letDdep_keV_per_um");
+  analysisManager->CreateNtupleDColumn("letDcalc_keV_per_um");
+  analysisManager->CreateNtupleDColumn("maxLetDep_keV_per_um");
+  analysisManager->CreateNtupleDColumn("maxLetCalc_keV_per_um");
+  analysisManager->CreateNtupleDColumn("fractionEionAbove10");
+  analysisManager->CreateNtupleDColumn("fractionEionAbove100");
+  analysisManager->CreateNtupleDColumn("fractionEionAbove1000");
+  analysisManager->CreateNtupleDColumn("meanDepth_um");
+  analysisManager->CreateNtupleDColumn("depthSigma_um");
+  analysisManager->CreateNtupleIColumn("nDepositingSteps");
+  analysisManager->CreateNtupleIColumn("nChargedTracks");
+  analysisManager->CreateNtupleDColumn("initialPairs");
+  analysisManager->FinishNtuple();
+
+  // TrackLET (id 1): one row per depositing track per charge-active absorber.
+  analysisManager->CreateNtuple("TrackLET", "Track-level LET scoring");
+  analysisManager->CreateNtupleIColumn("runID");
+  analysisManager->CreateNtupleIColumn("eventID");
+  analysisManager->CreateNtupleIColumn("trackID");
+  analysisManager->CreateNtupleIColumn("parentID");
+  analysisManager->CreateNtupleIColumn("absorberID");
+  analysisManager->CreateNtupleIColumn("PDG");
+  analysisManager->CreateNtupleDColumn("charge");
+  analysisManager->CreateNtupleIColumn("atomicZ");
+  analysisManager->CreateNtupleIColumn("atomicA");
+  analysisManager->CreateNtupleIColumn("depositCategory");
+  analysisManager->CreateNtupleIColumn("reactionCategory");
+  analysisManager->CreateNtupleIColumn("electronLineage");
+  analysisManager->CreateNtupleIColumn("originAbsorber");
+  analysisManager->CreateNtupleDColumn("vertexKE_MeV");
+  analysisManager->CreateNtupleDColumn("entryKE_MeV");
+  analysisManager->CreateNtupleDColumn("exitKE_MeV");
+  analysisManager->CreateNtupleDColumn("edep_keV");
+  analysisManager->CreateNtupleDColumn("eion_keV");
+  analysisManager->CreateNtupleDColumn("niel_keV");
+  analysisManager->CreateNtupleDColumn("path_um");
+  analysisManager->CreateNtupleDColumn("trackLET_keV_per_um");
+  analysisManager->CreateNtupleDColumn("letDdep_keV_per_um");
+  analysisManager->CreateNtupleDColumn("letDcalc_keV_per_um");
+  analysisManager->CreateNtupleDColumn("maxLetDep_keV_per_um");
+  analysisManager->CreateNtupleDColumn("maxLetCalc_keV_per_um");
+  analysisManager->CreateNtupleDColumn("startDepth_um");
+  analysisManager->CreateNtupleDColumn("endDepth_um");
+  analysisManager->CreateNtupleDColumn("minDepth_um");
+  analysisManager->CreateNtupleDColumn("maxDepth_um");
+  analysisManager->CreateNtupleDColumn("meanDepth_um");
+  analysisManager->CreateNtupleIColumn("escapeCategory");
+  analysisManager->CreateNtupleIColumn("stoppedInActiveLayer");
+  analysisManager->CreateNtupleIColumn("nDepositingSteps");
+  analysisManager->CreateNtupleDColumn("trackWeight");
+  analysisManager->FinishNtuple();
+
+  // StepLET (id 2): sampled/gated per-step diagnostic ntuple.
+  analysisManager->CreateNtuple("StepLET", "Sampled step-level LET scoring");
+  analysisManager->CreateNtupleIColumn("runID");
+  analysisManager->CreateNtupleIColumn("eventID");
+  analysisManager->CreateNtupleIColumn("trackID");
+  analysisManager->CreateNtupleIColumn("parentID");
+  analysisManager->CreateNtupleIColumn("absorberID");
+  analysisManager->CreateNtupleIColumn("PDG");
+  analysisManager->CreateNtupleIColumn("atomicZ");
+  analysisManager->CreateNtupleIColumn("atomicA");
+  analysisManager->CreateNtupleIColumn("depositCategory");
+  analysisManager->CreateNtupleIColumn("reactionCategory");
+  analysisManager->CreateNtupleDColumn("preKE_MeV");
+  analysisManager->CreateNtupleDColumn("postKE_MeV");
+  analysisManager->CreateNtupleDColumn("midpointKE_MeV");
+  analysisManager->CreateNtupleDColumn("edep_keV");
+  analysisManager->CreateNtupleDColumn("eion_keV");
+  analysisManager->CreateNtupleDColumn("niel_keV");
+  analysisManager->CreateNtupleDColumn("stepLength_um");
+  analysisManager->CreateNtupleDColumn("letDep_keV_per_um");
+  analysisManager->CreateNtupleDColumn("letCalc_keV_per_um");
+  analysisManager->CreateNtupleDColumn("localX_um");
+  analysisManager->CreateNtupleDColumn("localY_um");
+  analysisManager->CreateNtupleDColumn("localZ_um");
+  analysisManager->CreateNtupleDColumn("normalizedDepth");
+  analysisManager->CreateNtupleDColumn("globalTime_ns");
+  analysisManager->CreateNtupleIColumn("processSubType");
+  analysisManager->CreateNtupleDColumn("weight");
+  analysisManager->FinishNtuple();
 }

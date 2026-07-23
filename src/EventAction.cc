@@ -34,8 +34,15 @@
 
 #include "G4Event.hh"
 #include "G4Material.hh"
+#include "G4ParticleDefinition.hh"
+#include "G4PrimaryParticle.hh"
+#include "G4PrimaryVertex.hh"
 #include "G4RunManager.hh"
 #include "G4SystemOfUnits.hh"
+#include "G4Track.hh"
+
+#include <algorithm>
+#include <cmath>
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
 
@@ -64,6 +71,13 @@ void EventAction::BeginOfEventAction(const G4Event*)
   fElectronLineage.clear();
   fTrackParticleName.clear();
   fTrackOriginAbsor.clear();
+
+  // Reset LET / track-structure scoring state.
+  for (G4int k = 0; k < kMaxAbsor; k++) {
+    fEventLet[k] = EventLetScore{};
+  }
+  fTrackLetInAbsor.clear();
+  fTrackReaction.clear();
 }
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
@@ -198,7 +212,117 @@ void EventAction::SumElectronEdepByLineage(G4int absorNum, G4int lineage, G4doub
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
 
-void EventAction::EndOfEventAction(const G4Event*)
+void EventAction::AccumulateLetStep(G4int absorNum, const LetStepData& s)
+{
+  if (absorNum < 1 || absorNum >= kMaxAbsor) return;
+  EventLetScore& ev = fEventLet[absorNum];
+  TrackLetScore& trk = fTrackLetInAbsor[absorNum];
+
+  ev.eDep += s.edep;
+  ev.eIon += s.eIon;
+  ev.niel += s.niel;
+  trk.eDep += s.edep;
+  trk.eIon += s.eIon;
+  trk.niel += s.niel;
+
+  if (s.charged) {
+    ev.chargedPath += s.dl;
+    trk.chargedPath += s.dl;
+  }
+
+  // Track entry/exit kinematics and boundary crossings (containment).
+  if (s.enteredAbsor && trk.entryKE < 0.) trk.entryKE = s.preKE;
+  trk.exitKE = s.postKE;
+  if (s.exitedFront) trk.crossedFront = true;
+  if (s.exitedBack) trk.crossedBack = true;
+  if (s.exitedLateral) trk.crossedLateral = true;
+
+  if (s.eIon > 0.) {
+    const G4int c = static_cast<G4int>(s.depCat);
+
+    ev.sumEionLetDep += s.eIon * s.letDep;
+    ev.sumEionLetCalc += s.eIon * s.letCalc;
+    ev.maxLetDep = std::max(ev.maxLetDep, s.letDep);
+    ev.maxLetCalc = std::max(ev.maxLetCalc, s.letCalc);
+    ev.sumEionDepth += s.eIon * s.depth;
+    ev.sumEionDepth2 += s.eIon * s.depth * s.depth;
+    ev.eIonByCategory[c] += s.eIon;
+    ++ev.nDepositingSteps;
+    if (s.letCalc >= kLetThreshold1) ev.eIonAbove1 += s.eIon;
+    if (s.letCalc >= kLetThreshold2) ev.eIonAbove2 += s.eIon;
+    if (s.letCalc >= kLetThreshold3) ev.eIonAbove3 += s.eIon;
+
+    trk.sumEionLetDep += s.eIon * s.letDep;
+    trk.sumEionLetCalc += s.eIon * s.letCalc;
+    trk.maxLetDep = std::max(trk.maxLetDep, s.letDep);
+    trk.maxLetCalc = std::max(trk.maxLetCalc, s.letCalc);
+    trk.sumEionDepth += s.eIon * s.depth;
+    trk.minDepth = std::min(trk.minDepth, s.depth);
+    trk.maxDepth = std::max(trk.maxDepth, s.depth);
+    if (!trk.hasStart) {
+      trk.startDepth = s.depth;
+      trk.hasStart = true;
+    }
+    trk.endDepth = s.depth;
+    ++trk.nDepositingSteps;
+  }
+}
+
+//....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
+
+void EventAction::CountCompletedChargedTrack(G4int absorNum)
+{
+  if (absorNum >= 1 && absorNum < kMaxAbsor) ++fEventLet[absorNum].nChargedTracks;
+}
+
+//....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
+
+void EventAction::SetTrackReaction(G4int trackId, ReactionCategory category)
+{
+  fTrackReaction[trackId] = category;
+}
+
+//....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
+
+ReactionCategory EventAction::GetTrackReaction(G4int trackId) const
+{
+  const auto it = fTrackReaction.find(trackId);
+  return (it == fTrackReaction.end()) ? ReactionCategory::None : it->second;
+}
+
+//....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
+
+DepositCategory EventAction::ClassifyDeposit(const G4Track* track) const
+{
+  const G4ParticleDefinition* p = track->GetDefinition();
+  const G4int pdg = p->GetPDGEncoding();
+
+  if (pdg == 11) {
+    const G4int lineage = GetElectronLineage(track->GetTrackID());
+    return (lineage == kElectronLineageGamma) ? DepositCategory::ElectronGamma
+                                              : DepositCategory::ElectronIon;
+  }
+  if (pdg == -11) return DepositCategory::Positron;
+
+  const G4String& name = p->GetParticleName();
+  if (name == "proton") return DepositCategory::Proton;
+  if (name == "deuteron" || name == "triton" || name == "He3")
+    return DepositCategory::LightIon;
+  if (name == "alpha") return DepositCategory::Alpha;
+
+  const G4double q = p->GetPDGCharge();
+  const G4int Z = p->GetAtomicNumber();
+  if (Z == 3) return DepositCategory::Lithium;
+  if (Z == 6) return DepositCategory::Carbon;
+  if (Z == 4 || Z == 5) return DepositCategory::BeB;
+  if (q != 0. && Z > 0) return DepositCategory::OtherHeavyIon;
+  if (q == 0.) return DepositCategory::NeutralLocal;
+  return DepositCategory::Other;
+}
+
+//....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
+
+void EventAction::EndOfEventAction(const G4Event* evt)
 {
   // get Run
   Run* run = static_cast<Run*>(G4RunManager::GetRunManager()->GetNonConstCurrentRun());
@@ -263,6 +387,104 @@ void EventAction::EndOfEventAction(const G4Event*)
   analysis->FillH1(++id, EdepTot);
   analysis->FillH1(++id, EleakTot);
   analysis->FillH1(++id, ETot);
+
+  // ---- LET / track-structure: event-level histograms + EventLET ntuple ----
+  // Write one EventLET row per charge-active absorber, including events with
+  // zero deposition (the all-events Eion spectrum answers "energy deposited per
+  // incident primary" and must include zeros). The units stored are explicit
+  // human units (keV, um, keV/um, MeV) matching the ntuple column names.
+  const G4double keV_um = keV / um;
+
+  // Actual sampled primary for this event (first primary of the first vertex).
+  G4int primaryPDG = 0;
+  G4double primaryEnergy = 0.;
+  G4double primaryWeight = 1.;
+  if (evt->GetNumberOfPrimaryVertex() > 0) {
+    const G4PrimaryVertex* pv = evt->GetPrimaryVertex(0);
+    if (pv != nullptr && pv->GetNumberOfParticle() > 0) {
+      const G4PrimaryParticle* pp = pv->GetPrimary(0);
+      if (pp != nullptr) {
+        primaryPDG = pp->GetPDGcode();
+        primaryEnergy = pp->GetKineticEnergy();
+        primaryWeight = pp->GetWeight();
+      }
+    }
+  }
+
+  const G4int runID =
+      G4RunManager::GetRunManager()->GetCurrentRun()->GetRunID();
+  const G4int eventID = evt->GetEventID();
+
+  for (G4int k = 1; k <= nAbs; ++k) {
+    if (!fDetector->IsChargeActiveAbsorber(k)) continue;
+    const EventLetScore& sc = fEventLet[k];
+
+    // Run-level energy-partition totals (NIEL/Edep provenance + regression guard).
+    run->AccumulateLetTotals(k, sc.eDep, sc.eIon, sc.niel, sc.eIonByCategory);
+
+    // Derived event quantities (guarded divisions).
+    const G4double letT =
+        (sc.chargedPath > 0.) ? sc.eIon / sc.chargedPath : 0.;
+    const G4double letDdep = (sc.eIon > 0.) ? sc.sumEionLetDep / sc.eIon : 0.;
+    const G4double letDcalc = (sc.eIon > 0.) ? sc.sumEionLetCalc / sc.eIon : 0.;
+    const G4double meanDepth = (sc.eIon > 0.) ? sc.sumEionDepth / sc.eIon : 0.;
+    const G4double depthVar =
+        (sc.eIon > 0.)
+            ? std::max(0., sc.sumEionDepth2 / sc.eIon - meanDepth * meanDepth)
+            : 0.;
+    const G4double depthSigma = std::sqrt(depthVar);
+    const G4double f10 = (sc.eIon > 0.) ? sc.eIonAbove1 / sc.eIon : 0.;
+    const G4double f100 = (sc.eIon > 0.) ? sc.eIonAbove2 / sc.eIon : 0.;
+    const G4double f1000 = (sc.eIon > 0.) ? sc.eIonAbove3 / sc.eIon : 0.;
+    const G4double W = fDetector->GetPairCreationEnergy(k);
+    const G4double initialPairs = (W > 0.) ? sc.eIon / W : 0.;
+
+    // Event-level histograms.
+    analysis->FillH1(EionEventAllId(k), sc.eIon / keV, primaryWeight);
+    if (sc.eIon > 0.) {
+      analysis->FillH1(EionEventHitId(k), sc.eIon / keV, primaryWeight);
+      analysis->FillH1(NielEventId(k), sc.niel / keV, primaryWeight);
+      analysis->FillH1(LetTEventId(k), letT / keV_um, primaryWeight);
+      analysis->FillH1(LetDdepEventId(k), letDdep / keV_um, primaryWeight);
+      analysis->FillH1(LetDcalcEventId(k), letDcalc / keV_um, primaryWeight);
+      analysis->FillH1(LetMaxEventId(k), sc.maxLetCalc / keV_um, primaryWeight);
+      analysis->FillH1(FracAbove1Id(k), f10, primaryWeight);
+      analysis->FillH1(FracAbove2Id(k), f100, primaryWeight);
+      analysis->FillH1(FracAbove3Id(k), f1000, primaryWeight);
+      analysis->FillH2(H2EventEionVsLetCalcId(k), sc.eIon / MeV,
+                       letDcalc / keV_um, primaryWeight);
+      analysis->FillH2(H2EventEionVsLetDepId(k), sc.eIon / MeV,
+                       letDdep / keV_um, primaryWeight);
+    }
+
+    // EventLET ntuple row (column order MUST match HistoManager booking).
+    const G4int nt = kNtupleEventLet;
+    G4int col = 0;
+    analysis->FillNtupleIColumn(nt, col++, runID);
+    analysis->FillNtupleIColumn(nt, col++, eventID);
+    analysis->FillNtupleIColumn(nt, col++, k);
+    analysis->FillNtupleIColumn(nt, col++, primaryPDG);
+    analysis->FillNtupleDColumn(nt, col++, primaryEnergy / MeV);
+    analysis->FillNtupleDColumn(nt, col++, primaryWeight);
+    analysis->FillNtupleDColumn(nt, col++, sc.eDep / keV);
+    analysis->FillNtupleDColumn(nt, col++, sc.eIon / keV);
+    analysis->FillNtupleDColumn(nt, col++, sc.niel / keV);
+    analysis->FillNtupleDColumn(nt, col++, sc.chargedPath / um);
+    analysis->FillNtupleDColumn(nt, col++, letT / keV_um);
+    analysis->FillNtupleDColumn(nt, col++, letDdep / keV_um);
+    analysis->FillNtupleDColumn(nt, col++, letDcalc / keV_um);
+    analysis->FillNtupleDColumn(nt, col++, sc.maxLetDep / keV_um);
+    analysis->FillNtupleDColumn(nt, col++, sc.maxLetCalc / keV_um);
+    analysis->FillNtupleDColumn(nt, col++, f10);
+    analysis->FillNtupleDColumn(nt, col++, f100);
+    analysis->FillNtupleDColumn(nt, col++, f1000);
+    analysis->FillNtupleDColumn(nt, col++, meanDepth / um);
+    analysis->FillNtupleDColumn(nt, col++, depthSigma / um);
+    analysis->FillNtupleIColumn(nt, col++, sc.nDepositingSteps);
+    analysis->FillNtupleIColumn(nt, col++, sc.nChargedTracks);
+    analysis->FillNtupleDColumn(nt, col++, initialPairs);
+    analysis->AddNtupleRow(nt);
+  }
 }
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......

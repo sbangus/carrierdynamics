@@ -53,8 +53,8 @@
 # Centre z = box half-depth (12.5 mm) + sourceStandoff (200 mm).
 /gps/pos/type Plane
 /gps/pos/shape Rectangle
-/gps/pos/halfx 100 mm
-/gps/pos/halfy 100 mm
+/gps/pos/halfx 50 mm
+/gps/pos/halfy 25 mm
 #/gps/pos/halfx 51.5 mm
 #/gps/pos/halfy 26.5 mm
 /gps/pos/centre 0 0 212.5 mm

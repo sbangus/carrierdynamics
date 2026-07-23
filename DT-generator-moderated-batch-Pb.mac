@@ -1,23 +1,21 @@
 # D-T generator neutron source: 14.1 MeV neutrons on the Al bud box + detector,
 # with a three-layer moderator stack between the source and the box.
 #
-# Geometry along +Z (neutron drift toward -Z):
-#   GPS disk (z = 393.5 mm) on the +Z face of the steel slab ->
-#   steel (5 in) -> air (203.2 mm) -> lead (2 in) -> Al box
-#   (+Z face at z = 12.5 mm) -> air cavity -> detector.
+# Geometry along +Z (primary travel toward -Z / detector):
+#   neutron GPS (z = 393.5 mm, +Z of Fe) ->
+#   Fe moderator (389.5-393.5 mm) ->
+#   gamma GPS (z = 389.5 mm, -Z face of Fe) ->
+#   air (63.3-389.5 mm) -> Pb (12.5-63.3 mm) -> Al box -> detector.
 #
 # Moderator stack (layer 1 adjacent to the box +Z face; higher indices toward
 # the source):
-#   layer 1 : G4_Pb   2 in  (50.8 mm)  -- right before the detector / Al box
-#   layer 2 : G4_AIR       (203.2 mm)  -- air gap between lead and steel
-#   layer 3 : G4_Fe   5 in  (127 mm)   -- flush with the source (+Z) side
+#   layer 1 : G4_Pb   50.8 mm
+#   layer 2 : G4_AIR 326.2 mm
+#   layer 3 : G4_Fe     4 mm
 #
-# Source: 15 in (381 mm) from the Al box +Z (front) exterior face.
-#   stack height = Pb + air + steel = 381 mm = sourceStandoff
-#   GPS z = boxHalfZ (12.5 mm) + sourceStandoff (381 mm) = 393.5 mm
-#
-# Source: 14.1 MeV D-T neutrons from a 200 x 200 mm rectangle, collimated along
-# -Z toward the detector, Gaussian energy spread (sigma = 0.16 MeV).
+# Neutron source: +Z exterior face of Fe at z = 393.5 mm.
+# Gamma source: -Z face of Fe at z = 389.5 mm.
+# Mixed dual-source per batch: I_neutron=1.0, I_gamma=50.0, N_n0=10e6, beamOn=510e6
 #
 /control/verbose 1
 /run/verbose 1
@@ -39,15 +37,20 @@
 /testhadr/det/setWorldMaterial G4_AIR
 /testhadr/det/setLabSize 2000 2000 2000 mm
 #
+# 18 inch (457.2 mm) concrete slab flush against the box back (-Z) face.
+# Same transverse footprint as the Al box (103 mm x 53 mm).
 /testhadr/det/setBackSlabEnable false
+/testhadr/det/setBackSlabMaterial G4_CONCRETE
+/testhadr/det/setBackSlabThickness 457.2 mm
+/testhadr/det/setBackSlabSize 700 700 mm
 #
 # Three-layer moderator: Pb at the box, air gap, steel at the source.
 /testhadr/det/setNbOfModeratorLayers 3
 /testhadr/det/setModeratorLayer 1 G4_Pb 50.8 mm
-/testhadr/det/setModeratorLayer 2 G4_AIR 315.2 mm
-/testhadr/det/setModeratorLayer 2 G4_Fe 15 mm
+/testhadr/det/setModeratorLayer 2 G4_AIR 326.2 mm
+/testhadr/det/setModeratorLayer 3 G4_Fe 4 mm
 /testhadr/det/setModeratorEnable true
-/testhadr/det/setModeratorTransverse 200 200 mm
+/testhadr/det/setModeratorTransverse 130 70 mm
 /testhadr/det/setModeratorGap 0 mm
 # 15 in from the Al box front (+Z) face; equals Pb + air + steel = 381 mm.
 /testhadr/det/setSourceStandoff 381 mm
@@ -57,37 +60,78 @@
 #
 /analysis/setFileName DT-generator-moderated
 #
+# ============================================================
+# Source 1: DT neutrons
+# Default source intensity = 1.0
+# Physical normalization: 3.4e8 neutrons/s
+# ============================================================
+
 /gps/particle neutron
-#
-# ----------------------------
-# Position distribution
-# Planar source on the +Z face: 200 x 200 mm rectangle.
-# Centre z = box half-depth (12.5 mm) + sourceStandoff (381 mm) = 393.5 mm.
-# ----------------------------
-/gps/pos/type Plane
-/gps/pos/shape Rectangle
-/gps/pos/halfx 100 mm
-/gps/pos/halfy 100 mm
+
+# Gaussian DT target spot:
+# sigma = 3.4 mm -> FWHM approximately 8.0 mm
+/gps/pos/type Beam
 /gps/pos/centre 0 0 393.5 mm
-#
-# Collimated beam along -Z (toward detector).
-/gps/ang/type iso
-/gps/ang/rot1 1 0 0
-/gps/ang/rot2 0 1 0
-/gps/ang/mintheta 0 deg
-/gps/ang/maxtheta 0 deg
-#
-# ----------------------------
-# Energy distribution
-# Gaussian approximation around 14.1 MeV
-# If 0.375 MeV is treated as FWHM:
-# sigma = 0.375 / 2.355 = 0.159 MeV
-# ----------------------------
-/gps/ene/type Gauss
+/gps/pos/sigma_r 3.4 mm
+
+/gps/ene/type Mono
 /gps/ene/mono 14.1 MeV
-/gps/ene/sigma 0.16 MeV
+
+/gps/ang/type iso
+/gps/ang/mintheta 0 deg
+/gps/ang/maxtheta 3.0 deg
+/gps/ang/minphi 0 deg
+/gps/ang/maxphi 360 deg
+
+
+
+# ============================================================
+# Source 2: equivalent escaping bremsstrahlung field
 #
-/run/printProgress 1000000
+# Relative intensity:
+# 5.0e8 gamma/s / 3.4e8 neutron/s = 1.47
+# ============================================================
+
+
+#/gps/particle gamma
+
+# Approximate filtered bremsstrahlung spectrum
+# Energies are entered in MeV
+#/gps/ene/type Arb
+#/gps/ene/diffspec true
+#/gps/ene/emspec true
+#/gps/hist/type arb
+
+#/gps/hist/point 0.010 0.00
+#/gps/hist/point 0.020 0.05
+#/gps/hist/point 0.040 0.55
+#/gps/hist/point 0.060 0.95
+#/gps/hist/point 0.065 1.00
+#/gps/hist/point 0.070 0.98
+#/gps/hist/point 0.090 0.60
+#/gps/hist/point 0.110 0.35
+#/gps/hist/point 0.125 0.10
+#/gps/hist/point 0.130 0.00
+#/gps/hist/inter Lin
+
+# Equivalent source at generator exit plane
+# Replace 50 mm with actual P383 end radius
+#/gps/pos/type Plane
+#/gps/pos/shape Circle
+#/gps/pos/radius 10 mm
+#/gps/pos/centre 0 0 389.5 mm
+
+# Broad cosine-weighted emission toward negative z
+
+#/gps/ang/type cos
+#/gps/ang/rot1 1 0 0
+#/gps/ang/rot2 0 1 0
+#/gps/ang/mintheta 0 deg
+#/gps/ang/maxtheta 90 deg
+#/gps/ang/minphi 0 deg
+#/gps/ang/maxphi 360 deg
+#
+/run/printProgress 10000000
 
 /testhadr/run/setBatchSummaryEnable true
 /testhadr/run/setBatchSummaryFile dt-gen-pb.csv
@@ -95,17 +139,17 @@
 # ---- Batch 01 ----
 /analysis/setFileName dt-gen-pb-1
 /testhadr/run/setBatchTag 01
-/random/setSeeds 121737700 913754137
-/run/beamOn 5000000
+/random/setSeeds 121737712 913754132
+/run/beamOn 233000
 #
 # ---- Batch 02 ----
-/analysis/setFileName dt-gen-pb-2
-/testhadr/run/setBatchTag 02
-/random/setSeeds 231451093 471209813
-/run/beamOn 5000000
+#/analysis/setFileName dt-gen-pb-2
+#/testhadr/run/setBatchTag 02
+#/random/setSeeds 231451093 471209813
+#/run/beamOn 510000000
 #
 # ---- Batch 03 ----
-/analysis/setFileName dt-gen-pb-3
-/testhadr/run/setBatchTag 03
-/random/setSeeds 320917264 282304519
-/run/beamOn 5000000
+#/analysis/setFileName dt-gen-pb-3
+#/testhadr/run/setBatchTag 03
+#/random/setSeeds 320917264 282304519
+#/run/beamOn 510000000

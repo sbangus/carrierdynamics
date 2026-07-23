@@ -32,8 +32,11 @@
 #include "G4UserSteppingAction.hh"
 #include "globals.hh"
 
+#include <memory>
+
 class DetectorConstruction;
 class EventAction;
+class G4EmCalculator;
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
 
@@ -41,7 +44,7 @@ class SteppingAction : public G4UserSteppingAction
 {
   public:
     SteppingAction(DetectorConstruction*, EventAction*);
-    ~SteppingAction() override = default;
+    ~SteppingAction() override;
 
     void UserSteppingAction(const G4Step*) override;
 
@@ -50,6 +53,12 @@ class SteppingAction : public G4UserSteppingAction
   private:
     DetectorConstruction* fDetector = nullptr;
     EventAction* fEventAct = nullptr;
+
+    // Per-thread electronic-stopping-power calculator (Lcalc). Each worker
+    // thread owns its own SteppingAction and thus its own calculator; a mutable
+    // G4EmCalculator must never be shared across threads. StepLET gating is read
+    // from the (shared) DetectorConstruction, so no per-instance state is needed.
+    std::unique_ptr<G4EmCalculator> fEmCalculator;
 };
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......

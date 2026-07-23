@@ -16,6 +16,19 @@ else()
 endif()
 
 #----------------------------------------------------------------------------
+# Record the Geant4 version used to build. The LET scoring targets the Geant4 11
+# analysis / EM APIs; warn (do not fail) if built against an untested major
+# series so results carry a clear provenance note. The exact version is also
+# captured at run time in the RunMetadata JSON sidecar (see Run::WriteRunMetadataJson).
+#
+message(STATUS "CarrierDynamics: building against Geant4 ${Geant4_VERSION}")
+if(Geant4_VERSION VERSION_LESS 11.0.0)
+  message(WARNING
+    "CarrierDynamics LET scoring is validated on Geant4 11.x; "
+    "building against ${Geant4_VERSION} is untested.")
+endif()
+
+#----------------------------------------------------------------------------
 # Setup Geant4 include directories and compile definitions
 #
 include(${Geant4_USE_FILE})
@@ -93,6 +106,8 @@ set(Hadr05_SCRIPTS
     DT-generator-moderated-vis.mac
     DT-generator-moderated-batch-Pb.mac
     DT-generator-moderated-batch-noPb.mac
+    bare-detector-vis.mac
+    bare-detector.mac
   )
 
 foreach(_script ${Hadr05_SCRIPTS})

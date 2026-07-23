@@ -149,6 +149,40 @@ class DetectorConstruction : public G4VUserDetectorConstruction
     const G4Material* GetAbsorMaterial(G4int i) const { return fAbsorMaterial[i]; };
     const G4LogicalVolume* GetAbsorberLogical(G4int i) const { return fLogicAbsor[i]; };
 
+    // Per-absorber charge-sensitive (semiconductor) scoring configuration.
+    // Absorbers flagged charge-active receive the full LET / track-structure
+    // scoring; W is the (estimated) pair-creation energy used only for the
+    // initial-pair estimate N0 = Eion / W. Both are 1-based (see LetScoring.hh);
+    // defaults are derived from the absorber material (PNDI* -> active, W =
+    // kDefaultPairCreationEnergy) in Construct(), and explicit setter calls
+    // (e.g. from the messenger) override those defaults.
+    G4bool IsChargeActiveAbsorber(G4int i) const
+    {
+      return (i >= 1 && i < kMaxAbsor) ? fChargeActive[i] : false;
+    }
+    G4double GetPairCreationEnergy(G4int i) const
+    {
+      return (i >= 1 && i < kMaxAbsor) ? fPairCreationEnergy[i] : 0.;
+    }
+    void SetChargeActiveAbsorber(G4int i, G4bool active);
+    void SetPairCreationEnergy(G4int i, G4double value);
+
+    // Convergence controls: absorber production range cut and max step limit.
+    // Applied in DefineRegionsAndCuts() (Construct-time), so set PreInit. The
+    // 0.1 um baseline is the default; sweep coarse/baseline/fine for convergence.
+    void SetAbsorberRangeCut(G4double v) { fAbsorberRangeCut = v; }
+    void SetAbsorberMaxStep(G4double v) { fAbsorberMaxStep = v; }
+    G4double GetAbsorberRangeCut() const { return fAbsorberRangeCut; }
+    G4double GetAbsorberMaxStep() const { return fAbsorberMaxStep; }
+
+    // Sampled StepLET ntuple gating (read by SteppingAction). Disabled by
+    // default; when enabled, StepLET rows are written for events with
+    // eventID < maxStepEvents (maxStepEvents <= 0 means all events).
+    void SetWriteStepNtuple(G4bool v) { fWriteStepNtuple = v; }
+    void SetMaxStepEvents(G4int n) { fMaxStepEvents = n; }
+    G4bool GetWriteStepNtuple() const { return fWriteStepNtuple; }
+    G4int GetMaxStepEvents() const { return fMaxStepEvents; }
+
     const G4VPhysicalVolume* GetphysiWorld() const { return fPhysiWorld; };
     const G4Material* GetWorldMaterial() const { return fWorldMaterial; };
     const G4Material* GetCavityMaterial() const { return fCavityMaterial; };
@@ -183,6 +217,22 @@ class DetectorConstruction : public G4VUserDetectorConstruction
     G4int fNbOfAbsor = 0;
     G4Material* fAbsorMaterial[kMaxAbsor];
     G4double fAbsorThickness[kMaxAbsor];
+
+    // Per-absorber charge-active flags and (estimated) pair-creation energies,
+    // indexed by the 1-based absorber number (index 0 reserved/unused). The
+    // *Set arrays record explicit user overrides so Construct() does not clobber
+    // messenger-configured values with material-derived defaults.
+    G4bool fChargeActive[kMaxAbsor] = {false};
+    G4bool fChargeActiveSet[kMaxAbsor] = {false};
+    G4double fPairCreationEnergy[kMaxAbsor] = {0.};
+    G4bool fPairCreationEnergySet[kMaxAbsor] = {false};
+
+    // Convergence controls (absorber production cut + max step) and StepLET
+    // sampled-output gating. Defaults set in the constructor.
+    G4double fAbsorberRangeCut = 0.;
+    G4double fAbsorberMaxStep = 0.;
+    G4bool fWriteStepNtuple = false;
+    G4int fMaxStepEvents = 0;
 
     G4int fNbOfLayers = 0;
     G4double fLayerThickness = 0.;

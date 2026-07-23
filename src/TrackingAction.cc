@@ -34,8 +34,13 @@
 #include "Run.hh"
 
 #include "G4AnalysisManager.hh"
+#include "G4Event.hh"
+#include "G4EventManager.hh"
+#include "G4ParticleDefinition.hh"
 #include "G4RunManager.hh"
 #include "G4StepStatus.hh"
+#include "G4SystemOfUnits.hh"
+#include "G4Track.hh"
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
 
@@ -76,6 +81,7 @@ void TrackingAction::PreUserTrackingAction(const G4Track* track)
   // Reset the per-track path-length accumulator for the track about to be
   // transported (Geant4 finishes one track before starting the next).
   fEventAct->BeginTrackPath();
+  fEventAct->BeginTrackLet();
 }
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
@@ -142,6 +148,107 @@ void TrackingAction::PostUserTrackingAction(const G4Track* aTrack)
     }
     const G4double total = aTrack->GetTrackLength();
     if (total > 0.) analysis->FillH1(kTotalPrimaryPathLength, total);
+  }
+
+  // ---- LET / track-structure: flush per-track TrackLET rows ----------------
+  // One row per absorber in which this track deposited ionizing energy. Track
+  // LET metrics are unweighted physical quantities; the statistical track weight
+  // is stored as its own column. Track-category QA histograms are filled here.
+  {
+    auto* analysis = G4AnalysisManager::Instance();
+    const std::map<G4int, TrackLetScore>& trackLet = fEventAct->GetTrackLetMap();
+    if (!trackLet.empty()) {
+      const G4ParticleDefinition* def = aTrack->GetDefinition();
+      const G4int trackID = aTrack->GetTrackID();
+      const G4int parentID = aTrack->GetParentID();
+      const G4int pdg = def->GetPDGEncoding();
+      const G4double charge = def->GetPDGCharge();
+      const G4int atomicZ = def->GetAtomicNumber();
+      const G4int atomicA = def->GetAtomicMass();
+      const DepositCategory depCat = fEventAct->ClassifyDeposit(aTrack);
+      const ReactionCategory rxnCat = fEventAct->GetTrackReaction(trackID);
+      const G4int lineage = fEventAct->GetElectronLineage(trackID);
+      const G4int originAbsor = fEventAct->GetTrackOrigin(trackID);
+      const G4double vertexKE = aTrack->GetVertexKineticEnergy();
+      const G4double trackWeight = aTrack->GetWeight();
+
+      const G4Event* evt =
+          G4EventManager::GetEventManager()->GetConstCurrentEvent();
+      const G4int eventID = (evt != nullptr) ? evt->GetEventID() : -1;
+      const G4int runID =
+          G4RunManager::GetRunManager()->GetCurrentRun()->GetRunID();
+      const G4double keV_um = keV / um;
+
+      for (const auto& [absorNum, score] : trackLet) {
+        if (score.eIon <= 0.) continue;  // depositing tracks only
+
+        const G4double trackLET =
+            (score.chargedPath > 0.) ? score.eIon / score.chargedPath : 0.;
+        const G4double letDdep = score.sumEionLetDep / score.eIon;
+        const G4double letDcalc = score.sumEionLetCalc / score.eIon;
+        const G4double meanDepth = score.sumEionDepth / score.eIon;
+        const EscapeCategory escape = ResolveEscapeCategory(score);
+        const G4int stoppedInLayer =
+            (escape == EscapeCategory::Contained) ? 1 : 0;
+        const G4double depthSpan =
+            (score.maxDepth >= score.minDepth) ? (score.maxDepth - score.minDepth) : 0.;
+
+        // Track-category QA histograms.
+        const G4int c = static_cast<G4int>(depCat);
+        analysis->FillH1(TrackEionCatId(absorNum, c), score.eIon / keV, trackWeight);
+        analysis->FillH1(TrackLetCatId(absorNum, c), trackLET / keV_um, trackWeight);
+        analysis->FillH1(TrackDepthSpanCatId(absorNum, c), depthSpan / um, trackWeight);
+        // Containment: categorical histogram (bin = EscapeCategory value).
+        analysis->FillH1(TrackContainmentId(absorNum),
+                         static_cast<G4double>(static_cast<G4int>(escape)),
+                         trackWeight);
+        analysis->FillH2(H2TrackEionVsLetCalcId(absorNum),
+                         score.eIon / keV, letDcalc / keV_um, trackWeight);
+        analysis->FillH2(H2TrackEionVsLetDepId(absorNum),
+                         score.eIon / keV, letDdep / keV_um, trackWeight);
+
+        // TrackLET ntuple row (column order MUST match HistoManager booking).
+        const G4int nt = kNtupleTrackLet;
+        G4int col = 0;
+        analysis->FillNtupleIColumn(nt, col++, runID);
+        analysis->FillNtupleIColumn(nt, col++, eventID);
+        analysis->FillNtupleIColumn(nt, col++, trackID);
+        analysis->FillNtupleIColumn(nt, col++, parentID);
+        analysis->FillNtupleIColumn(nt, col++, absorNum);
+        analysis->FillNtupleIColumn(nt, col++, pdg);
+        analysis->FillNtupleDColumn(nt, col++, charge);
+        analysis->FillNtupleIColumn(nt, col++, atomicZ);
+        analysis->FillNtupleIColumn(nt, col++, atomicA);
+        analysis->FillNtupleIColumn(nt, col++, static_cast<G4int>(depCat));
+        analysis->FillNtupleIColumn(nt, col++, static_cast<G4int>(rxnCat));
+        analysis->FillNtupleIColumn(nt, col++, lineage);
+        analysis->FillNtupleIColumn(nt, col++, originAbsor);
+        analysis->FillNtupleDColumn(nt, col++, vertexKE / MeV);
+        analysis->FillNtupleDColumn(nt, col++, score.entryKE / MeV);
+        analysis->FillNtupleDColumn(nt, col++, score.exitKE / MeV);
+        analysis->FillNtupleDColumn(nt, col++, score.eDep / keV);
+        analysis->FillNtupleDColumn(nt, col++, score.eIon / keV);
+        analysis->FillNtupleDColumn(nt, col++, score.niel / keV);
+        analysis->FillNtupleDColumn(nt, col++, score.chargedPath / um);
+        analysis->FillNtupleDColumn(nt, col++, trackLET / keV_um);
+        analysis->FillNtupleDColumn(nt, col++, letDdep / keV_um);
+        analysis->FillNtupleDColumn(nt, col++, letDcalc / keV_um);
+        analysis->FillNtupleDColumn(nt, col++, score.maxLetDep / keV_um);
+        analysis->FillNtupleDColumn(nt, col++, score.maxLetCalc / keV_um);
+        analysis->FillNtupleDColumn(nt, col++, score.startDepth / um);
+        analysis->FillNtupleDColumn(nt, col++, score.endDepth / um);
+        analysis->FillNtupleDColumn(nt, col++, score.minDepth / um);
+        analysis->FillNtupleDColumn(nt, col++, score.maxDepth / um);
+        analysis->FillNtupleDColumn(nt, col++, meanDepth / um);
+        analysis->FillNtupleIColumn(nt, col++, static_cast<G4int>(escape));
+        analysis->FillNtupleIColumn(nt, col++, stoppedInLayer);
+        analysis->FillNtupleIColumn(nt, col++, score.nDepositingSteps);
+        analysis->FillNtupleDColumn(nt, col++, trackWeight);
+        analysis->AddNtupleRow(nt);
+
+        fEventAct->CountCompletedChargedTrack(absorNum);
+      }
+    }
   }
 }
 

@@ -38,6 +38,8 @@
 #include <map>
 #include <set>
 
+class G4Track;
+
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
 
 class EventAction : public G4UserEventAction
@@ -90,6 +92,32 @@ class EventAction : public G4UserEventAction
     void AddTrackPathLength(G4int absorNum, G4double len);
     const std::map<G4int, G4double>& GetTrackPathMap() const { return fTrackPathInAbsor; }
 
+    // ---- LET / track-structure scoring --------------------------------------
+    // Accumulate one charged/neutral step's contribution into both the current
+    // event's per-absorber EventLetScore and the current track's per-absorber
+    // TrackLetScore. Called from SteppingAction for charge-active absorbers.
+    void AccumulateLetStep(G4int absorNum, const LetStepData& step);
+
+    // Per-track LET map lifecycle (mirrors BeginTrackPath / GetTrackPathMap).
+    // Cleared per track in TrackingAction::PreUserTrackingAction and flushed to
+    // TrackLET ntuple rows in PostUserTrackingAction.
+    void BeginTrackLet() { fTrackLetInAbsor.clear(); }
+    const std::map<G4int, TrackLetScore>& GetTrackLetMap() const { return fTrackLetInAbsor; }
+
+    // Per-event EventLetScore access (for EndOfEventAction row writing).
+    const EventLetScore& GetEventLet(G4int absorNum) const { return fEventLet[absorNum]; }
+    void CountCompletedChargedTrack(G4int absorNum);
+
+    // Reaction-channel tag per track (set at the interaction, inherited by
+    // descendants on their first step; see SteppingAction).
+    void SetTrackReaction(G4int trackId, ReactionCategory category);
+    ReactionCategory GetTrackReaction(G4int trackId) const;
+
+    // Classify a depositing track into a stable DepositCategory (uses PDG,
+    // particle name, atomic number, and the electron gamma/ion lineage tag).
+    // Shared by SteppingAction (per step) and TrackingAction (per track flush).
+    DepositCategory ClassifyDeposit(const G4Track* track) const;
+
   private:
     DetectorConstruction* fDetector = nullptr;
 
@@ -112,6 +140,13 @@ class EventAction : public G4UserEventAction
     // absorber o (o = 0 -> external/primary). Origin tags are per track.
     std::map<G4int, G4int> fTrackOriginAbsor;
     G4double fEdepByOrigin[kMaxAbsor][kNbOrigin] = {{0.}};
+
+    // LET / track-structure scoring state (1-based absorber indexing).
+    // fEventLet[absNum] is reset each event; fTrackLetInAbsor is reset per track;
+    // fTrackReaction maps trackID -> its lineage's reaction channel.
+    EventLetScore fEventLet[kMaxAbsor];
+    std::map<G4int, TrackLetScore> fTrackLetInAbsor;
+    std::map<G4int, ReactionCategory> fTrackReaction;
 };
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......

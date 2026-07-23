@@ -73,6 +73,14 @@ class Run : public G4Run
     // Accumulate run-level cross-absorber Edep provenance (deposit x origin).
     void SumEdepByOrigin(G4int depositAbsor, G4int originAbsor, G4double de);
 
+    // Accumulate run-level LET energy-partition totals for a charge-active
+    // absorber (from EventAction::EndOfEventAction). Used by EndOfRun to report
+    // the run-summed NIEL/Edep split per absorber and per deposit category -- a
+    // provenance record and a regression guard against a physics-list change
+    // that silently drops nuclear stopping (which populates NIEL for ions).
+    void AccumulateLetTotals(G4int k, G4double edep, G4double eion, G4double niel,
+                             const std::map<G4int, G4double>& eionByCat);
+
     // Per-event helpers used by EventAction at end-of-event.
     void AddInteractedFlags(const G4bool flags[]);
 
@@ -86,6 +94,11 @@ class Run : public G4Run
     void AppendBatchSummaryCsv();
     void PrintSecondaryBirthSummary() const;
     void PrintEdepByOriginSummary(G4double norm) const;
+    /// Report the run-summed ionizing/non-ionizing (NIEL) energy partition for
+    /// each charge-active absorber, with a per-deposit-category Eion breakdown.
+    void PrintLetEnergyPartition() const;
+    /// Write a reproducibility metadata JSON sidecar next to the ROOT output.
+    void WriteRunMetadataJson() const;
 
     DetectorConstruction* fDetector = nullptr;
     G4ParticleDefinition* fParticle = nullptr;
@@ -119,6 +132,15 @@ class Run : public G4Run
     // (o = 0 -> external/primary). Summed over events, merged across threads,
     // printed as a matrix in EndOfRun.
     G4double fEdepByOriginSum[kMaxAbsor][kNbOrigin] = {{0.}};
+
+    // Run-level LET energy-partition totals per charge-active absorber (1-based):
+    // total Edep, ionizing Eion, and non-ionizing NIEL, plus a per-deposit-
+    // category Eion breakdown. Summed over events, merged across threads, and
+    // reported in EndOfRun / the metadata JSON.
+    G4double fLetEdep[kMaxAbsor] = {0.};
+    G4double fLetEion[kMaxAbsor] = {0.};
+    G4double fLetNiel[kMaxAbsor] = {0.};
+    G4double fLetEionByCat[kMaxAbsor][kNbDepositCategories] = {{0.}};
 
     // Number of events in which a primary neutron interacted in absorber k
     // (one entry per absorber slot). Used to compute interaction fraction.

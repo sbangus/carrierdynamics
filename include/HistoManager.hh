@@ -35,6 +35,7 @@
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
 
 #include "DetectorConstruction.hh"
+#include "LetScoring.hh"  // DepositCategory, kNbDepositCategories, thresholds
 
 // ---------------------------------------------------------------------------
 // Histogram ID layout
@@ -265,6 +266,143 @@ inline G4int EdepByOriginId(G4int depositAbs, G4int originIdx) {
 }
 
 const G4int kMaxHisto = kEdepByOriginBase + kMaxAbsor * kNbOrigin;
+
+// ===========================================================================
+// LET / track-structure H1 histogram IDs (new family; all IDs >= kMaxHisto).
+// ---------------------------------------------------------------------------
+// The legacy histograms above are retired (booked but deactivated in Run.cc).
+// These new histograms carry the LET analysis. Two ID layouts are used:
+//   * Per-(absorber, deposit-category) families: kMaxAbsor*kNbDepositCategories
+//     slots each; indexed LetXxxId(a, c) with a = 1-based absorber number and
+//     c = DepositCategory integer value (0..kNbDepositCategories-1).
+//   * Per-absorber families: kMaxAbsor slots each; indexed XxxId(a).
+// Everything is booked generically (over the full kMaxAbsor range) in
+// HistoManager::Book(); only charge-active absorbers are configured and
+// activated per-geometry in Run::Run().
+// ===========================================================================
+
+const G4int kLetCatStride = kMaxAbsor * kNbDepositCategories;
+
+// Per-(absorber, category) step- and track-level LET spectra.
+const G4int kLetStepCountBase      = kMaxHisto;                          // Ldep number spectrum
+const G4int kLetStepEWeightedBase  = kLetStepCountBase     + kLetCatStride;  // Eion-weighted Ldep
+const G4int kLetCalcEWeightedBase  = kLetStepEWeightedBase + kLetCatStride;  // Eion-weighted Lcalc
+const G4int kTrackEionCatBase      = kLetCalcEWeightedBase + kLetCatStride;  // per-track Eion
+const G4int kTrackLetCatBase       = kTrackEionCatBase     + kLetCatStride;  // per-track LET
+const G4int kTrackDepthSpanCatBase = kTrackLetCatBase      + kLetCatStride;  // per-track depth span
+
+inline G4int LetStepCountId(G4int a, G4int c) {
+    return kLetStepCountBase + (a - 1) * kNbDepositCategories + c;
+}
+inline G4int LetStepEWeightedId(G4int a, G4int c) {
+    return kLetStepEWeightedBase + (a - 1) * kNbDepositCategories + c;
+}
+inline G4int LetCalcEWeightedId(G4int a, G4int c) {
+    return kLetCalcEWeightedBase + (a - 1) * kNbDepositCategories + c;
+}
+inline G4int TrackEionCatId(G4int a, G4int c) {
+    return kTrackEionCatBase + (a - 1) * kNbDepositCategories + c;
+}
+inline G4int TrackLetCatId(G4int a, G4int c) {
+    return kTrackLetCatBase + (a - 1) * kNbDepositCategories + c;
+}
+inline G4int TrackDepthSpanCatId(G4int a, G4int c) {
+    return kTrackDepthSpanCatBase + (a - 1) * kNbDepositCategories + c;
+}
+
+// Convenience overloads taking a DepositCategory directly.
+inline G4int LetStepCountId(G4int a, DepositCategory c) {
+    return LetStepCountId(a, static_cast<G4int>(c));
+}
+inline G4int LetStepEWeightedId(G4int a, DepositCategory c) {
+    return LetStepEWeightedId(a, static_cast<G4int>(c));
+}
+inline G4int LetCalcEWeightedId(G4int a, DepositCategory c) {
+    return LetCalcEWeightedId(a, static_cast<G4int>(c));
+}
+inline G4int TrackEionCatId(G4int a, DepositCategory c) {
+    return TrackEionCatId(a, static_cast<G4int>(c));
+}
+inline G4int TrackLetCatId(G4int a, DepositCategory c) {
+    return TrackLetCatId(a, static_cast<G4int>(c));
+}
+inline G4int TrackDepthSpanCatId(G4int a, DepositCategory c) {
+    return TrackDepthSpanCatId(a, static_cast<G4int>(c));
+}
+
+// Per-absorber event/track singleton families.
+const G4int kEionEventAllBase  = kTrackDepthSpanCatBase + kLetCatStride;  // all events (incl. zero)
+const G4int kEionEventHitBase  = kEionEventAllBase  + kMaxAbsor;          // hit-only Eion
+const G4int kNielEventBase     = kEionEventHitBase  + kMaxAbsor;          // NIEL per event
+const G4int kLetTEventBase     = kNielEventBase     + kMaxAbsor;          // track-length-avg LET
+const G4int kLetDdepEventBase  = kLetTEventBase     + kMaxAbsor;          // Eion-weighted Ldep
+const G4int kLetDcalcEventBase = kLetDdepEventBase  + kMaxAbsor;          // Eion-weighted Lcalc
+const G4int kLetMaxEventBase   = kLetDcalcEventBase + kMaxAbsor;          // max step LET
+const G4int kFracAbove1Base    = kLetMaxEventBase   + kMaxAbsor;          // Eion frac Lcalc>=thr1
+const G4int kFracAbove2Base    = kFracAbove1Base    + kMaxAbsor;          // >=thr2
+const G4int kFracAbove3Base    = kFracAbove2Base    + kMaxAbsor;          // >=thr3
+const G4int kEionDepthBase     = kFracAbove3Base    + kMaxAbsor;          // dEion/dz (absolute)
+const G4int kEionNormDepthBase = kEionDepthBase     + kMaxAbsor;          // dEion/du (normalized)
+const G4int kTrackContainBase  = kEionNormDepthBase + kMaxAbsor;          // containment (categorical)
+
+inline G4int EionEventAllId(G4int a)     { return kEionEventAllBase  + a - 1; }
+inline G4int EionEventHitId(G4int a)     { return kEionEventHitBase  + a - 1; }
+inline G4int NielEventId(G4int a)        { return kNielEventBase     + a - 1; }
+inline G4int LetTEventId(G4int a)        { return kLetTEventBase     + a - 1; }
+inline G4int LetDdepEventId(G4int a)     { return kLetDdepEventBase  + a - 1; }
+inline G4int LetDcalcEventId(G4int a)    { return kLetDcalcEventBase + a - 1; }
+inline G4int LetMaxEventId(G4int a)      { return kLetMaxEventBase   + a - 1; }
+inline G4int FracAbove1Id(G4int a)       { return kFracAbove1Base    + a - 1; }
+inline G4int FracAbove2Id(G4int a)       { return kFracAbove2Base    + a - 1; }
+inline G4int FracAbove3Id(G4int a)       { return kFracAbove3Base    + a - 1; }
+inline G4int EionDepthId(G4int a)        { return kEionDepthBase     + a - 1; }
+inline G4int EionNormDepthId(G4int a)    { return kEionNormDepthBase + a - 1; }
+inline G4int TrackContainmentId(G4int a) { return kTrackContainBase  + a - 1; }
+
+// Upper bound of the LET H1 ID space (one past the last LET H1 ID).
+const G4int kMaxHistoLet = kTrackContainBase + kMaxAbsor;
+
+// ---------------------------------------------------------------------------
+// LET H2 histogram IDs (independent H2 ID space, starting at 0). Per-absorber
+// families of kMaxAbsor slots each. Booked in Book() (in this exact order so
+// the helper IDs match g4tools' sequential H2 counter) and configured/activated
+// for charge-active absorbers in Run::Run().
+// ---------------------------------------------------------------------------
+const G4int kH2EventEionVsLetCalcBase = 0;                                  // x=Eion, y=event Lcalc
+const G4int kH2EventEionVsLetDepBase  = kH2EventEionVsLetCalcBase + kMaxAbsor;  // x=Eion, y=event Ldep
+const G4int kH2LetCalcVsDepthBase     = kH2EventEionVsLetDepBase  + kMaxAbsor;  // x=depth, y=Lcalc
+const G4int kH2LetDepVsDepthBase      = kH2LetCalcVsDepthBase     + kMaxAbsor;  // x=depth, y=Ldep
+const G4int kH2LetCalcVsKEBase        = kH2LetDepVsDepthBase      + kMaxAbsor;  // x=KE, y=Lcalc
+const G4int kH2TrackEionVsLetCalcBase = kH2LetCalcVsKEBase        + kMaxAbsor;  // x=track Eion, y=track LET
+const G4int kH2TrackEionVsLetDepBase  = kH2TrackEionVsLetCalcBase + kMaxAbsor;  // x=track Eion, y=track Ldep
+const G4int kH2DepthVsTransverseBase  = kH2TrackEionVsLetDepBase  + kMaxAbsor;  // x=depth, y=local y/z
+const G4int kNbH2Let                  = kH2DepthVsTransverseBase  + kMaxAbsor;
+
+inline G4int H2EventEionVsLetCalcId(G4int a) { return kH2EventEionVsLetCalcBase + a - 1; }
+inline G4int H2EventEionVsLetDepId(G4int a)  { return kH2EventEionVsLetDepBase  + a - 1; }
+inline G4int H2LetCalcVsDepthId(G4int a)     { return kH2LetCalcVsDepthBase     + a - 1; }
+inline G4int H2LetDepVsDepthId(G4int a)      { return kH2LetDepVsDepthBase      + a - 1; }
+inline G4int H2LetCalcVsKEId(G4int a)        { return kH2LetCalcVsKEBase        + a - 1; }
+inline G4int H2TrackEionVsLetCalcId(G4int a) { return kH2TrackEionVsLetCalcBase + a - 1; }
+inline G4int H2TrackEionVsLetDepId(G4int a)  { return kH2TrackEionVsLetDepBase  + a - 1; }
+inline G4int H2DepthVsTransverseId(G4int a)  { return kH2DepthVsTransverseBase  + a - 1; }
+
+// ---------------------------------------------------------------------------
+// LET ntuple IDs (independent ntuple ID space, created in Book() in this order).
+// EventLET and TrackLET are written for every production run; StepLET is a
+// sampled/gated diagnostic ntuple.
+// ---------------------------------------------------------------------------
+const G4int kNtupleEventLet = 0;
+const G4int kNtupleTrackLet = 1;
+const G4int kNtupleStepLet  = 2;
+
+// Human-readable names for the deposit categories (for H1 titles / QA).
+inline const G4String& DepositCategoryName(G4int c) {
+    static const G4String names[kNbDepositCategories] = {
+        "e-(gamma)", "e-(ion)", "e+", "proton", "lightIon", "alpha",
+        "Li", "C", "Be/B", "otherHeavyIon", "neutralLocal", "other"};
+    return (c >= 0 && c < kNbDepositCategories) ? names[c] : names[kNbDepositCategories - 1];
+}
 
 // Creator-process categories for secondary-birth run summary (Run::PrintSecondaryBirthSummary).
 const G4int kNbSecCreatorCat = 5;  // hadronic, em_ion, em_photon, em_other, other

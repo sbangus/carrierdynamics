@@ -32,14 +32,14 @@
 /testhadr/det/setLabSize 2000 2000 2000 mm
 #
 /testhadr/det/setNbOfModeratorLayers 3
-/testhadr/det/setModeratorLayer 1 G4_Pb 3 mm
-/testhadr/det/setModeratorLayer 2 HeavyWater 85 mm
-/testhadr/det/setModeratorLayer 3 polyethylene 105 mm
+/testhadr/det/setModeratorLayer 1 G4_Pb 0.01 mm
+/testhadr/det/setModeratorLayer 2 HeavyWater 95 mm
+/testhadr/det/setModeratorLayer 3 polyethylene 75 mm
 /testhadr/det/setModeratorGap 10 mm
 # Lateral moderator footprint (full X x Y). Independent of bud-box externals.
 # Use "0 0 mm" to revert to box size (103 x 53 mm). Scale per macro as needed.
 /testhadr/det/setModeratorTransverse 200 200 mm
-/testhadr/det/setSourceStandoff 200 mm
+/testhadr/det/setSourceStandoff 183 mm
 #
 #/testhadr/det/setNbOfModeratorLayers 2
 #/testhadr/det/setModeratorLayer 1 HeavyWater 85 mm
@@ -48,31 +48,64 @@
 #/testhadr/det/setSourceStandoff 200 mm
 /random/setSeeds 121737800 913654137
 /run/initialize
+
+/analysis/setFileName DD-moderated-shielding
+
 #
-/gps/particle neutron
-/gps/ene/type Mono
-/gps/ene/mono 2.45 MeV
+#/gps/particle neutron
+#/gps/ene/type Mono
+#/gps/ene/mono 2.45 MeV
 #/gps/ene/mono 600 keV
 #
 # Planar source on the +Z face: rectangle matches moderator transverse (500 x 500 mm).
 # Centre z = box half-depth (12.5 mm) + sourceStandoff (200 mm).
-/gps/pos/type Plane
-/gps/pos/shape Rectangle
-/gps/pos/halfx 100 mm
-/gps/pos/halfy 100 mm
-#/gps/pos/halfx 51.5 mm
-#/gps/pos/halfy 26.5 mm
-/gps/pos/centre 0 0 212.5 mm
+#/gps/pos/type Plane
+#/gps/pos/shape Rectangle
+#/gps/pos/halfx 20 mm
+#/gps/pos/halfy 10 mm
+#/gps/pos/centre 0 0 212.5 mm
 #
 # Collimated beam along -Z (toward detector). GPS "iso" emits along -AngRef3
 # (AngRef3 = rot1 x rot2); rot1 = +X, rot2 = +Y => theta = 0 is -Z.
 # Do not use beam1d with rot1 = (0,0,-1): that sets x' = -Z and theta = 0
 # fires along +X, parallel to the detector face.
+#/gps/ang/type iso
+#/gps/ang/rot1 1 0 0
+#/gps/ang/rot2 0 1 0
+#/gps/ang/mintheta 0 deg
+#/gps/ang/maxtheta 0 deg
+#
+
+
+# --- Source 1: 2.45 MeV DD neutrons (intensity 1.0) ---
+/gps/source/intensity 1.0
+/gps/particle neutron
+/gps/ene/type Mono
+/gps/ene/mono 2.45 MeV
+/gps/pos/type Plane
+/gps/pos/shape Rectangle
+/gps/pos/halfx 50 mm
+/gps/pos/halfy 50 mm
+/gps/pos/centre 0 0 212.5 mm
 /gps/ang/type iso
 /gps/ang/rot1 1 0 0
 /gps/ang/rot2 0 1 0
 /gps/ang/mintheta 0 deg
 /gps/ang/maxtheta 0 deg
-#
-/run/printProgress 100000000
-/run/beamOn 4000000000
+# --- Source 2: thermal neutrons (intensity 1.0) ---
+/gps/source/add 1.0
+/gps/particle neutron
+/gps/ene/type Mono
+/gps/ene/mono 0.025 eV
+/gps/pos/type Plane
+/gps/pos/shape Rectangle
+/gps/pos/halfx 50 mm
+/gps/pos/halfy 50 mm
+/gps/pos/centre 0 0 212.5 mm
+/gps/ang/type iso
+/gps/ang/rot1 1 0 0
+/gps/ang/rot2 0 1 0
+/gps/ang/mintheta 0 deg
+/gps/ang/maxtheta 0 deg
+/run/printProgress 100000
+/run/beamOn 5000000

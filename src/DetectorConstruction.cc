@@ -29,6 +29,7 @@
 #include "DetectorConstruction.hh"
 
 #include "DetectorMessenger.hh"
+#include "LetScoring.hh"  // kDefaultPairCreationEnergy
 
 #include <cmath>
 
@@ -126,6 +127,11 @@ DetectorConstruction::DetectorConstruction()
   // full-area box like the other layers.
   fEpoxyBlobRadius = 2. * mm;
   fEpoxyBlobHeight = 1. * mm;
+
+  // Baseline absorber production range cut and max step (0.1 um). Overridable
+  // via the messenger for coarse/baseline/fine convergence studies.
+  fAbsorberRangeCut = 0.1 * micrometer;
+  fAbsorberMaxStep = 0.1 * micrometer;
 
   // materials
   DefineMaterials();
@@ -899,11 +905,59 @@ G4VPhysicalVolume* DetectorConstruction::Construct()
                                           fLogicWorld, false, 0);
   }
 
+  // Resolve per-absorber charge-active flags and pair-creation energies.
+  // Default: absorbers whose material name contains "PNDI" are charge-active
+  // semiconductors (preserving the legacy PNDI auto-detect that gated the old
+  // EHP histogram) with W = kDefaultPairCreationEnergy. Explicit messenger
+  // settings (fChargeActiveSet / fPairCreationEnergySet) override the default.
+  for (G4int k = 1; k <= fNbOfAbsor; ++k) {
+    if (!fChargeActiveSet[k]) {
+      const G4String matName =
+          (fAbsorMaterial[k] != nullptr) ? fAbsorMaterial[k]->GetName() : "";
+      fChargeActive[k] = (matName.find("PNDI") != std::string::npos);
+    }
+    if (fChargeActive[k] && !fPairCreationEnergySet[k]
+        && fPairCreationEnergy[k] <= 0.) {
+      fPairCreationEnergy[k] = kDefaultPairCreationEnergy;
+    }
+  }
+
   DefineRegionsAndCuts();
 
   PrintCalorParameters();
 
   return fPhysiWorld;
+}
+
+//....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
+
+void DetectorConstruction::SetChargeActiveAbsorber(G4int i, G4bool active)
+{
+  if (i < 1 || i >= kMaxAbsor) {
+    G4cout << "\n --> warning from SetChargeActiveAbsorber: absorber index " << i
+           << " is out of range (1.." << kMaxAbsor - 1 << "). Ignored." << G4endl;
+    return;
+  }
+  fChargeActive[i] = active;
+  fChargeActiveSet[i] = true;
+}
+
+//....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
+
+void DetectorConstruction::SetPairCreationEnergy(G4int i, G4double value)
+{
+  if (i < 1 || i >= kMaxAbsor) {
+    G4cout << "\n --> warning from SetPairCreationEnergy: absorber index " << i
+           << " is out of range (1.." << kMaxAbsor - 1 << "). Ignored." << G4endl;
+    return;
+  }
+  if (value <= 0.) {
+    G4cout << "\n --> warning from SetPairCreationEnergy: W must be positive."
+           << " Ignored." << G4endl;
+    return;
+  }
+  fPairCreationEnergy[i] = value;
+  fPairCreationEnergySet[i] = true;
 }
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
@@ -920,9 +974,11 @@ void DetectorConstruction::DefineRegionsAndCuts()
   //   - metal contacts: gamma 0.01 um (to resolve high-Z photoelectric lines)
   //   - all absorbers: 0.1 um max-step user limit (enforced via
   //     G4StepLimiterPhysics in PhysicsList)
-  constexpr G4double kAbsorberRange = 0.1 * micrometer;
-  constexpr G4double kMetalGammaRange = 0.01 * micrometer;
-  constexpr G4double kAbsorberMaxStep = 0.1 * micrometer;
+  // Absorber range cut and max step are messenger-configurable (convergence);
+  // the metal-contact gamma cut stays at a fixed tenth of the absorber cut.
+  const G4double kAbsorberRange = fAbsorberRangeCut;
+  const G4double kMetalGammaRange = 0.1 * fAbsorberRangeCut;
+  const G4double kAbsorberMaxStep = fAbsorberMaxStep;
 
   // Surrounding passive volumes keep coarser cuts (they only shape the
   // incident field; their internal secondaries are not scored).

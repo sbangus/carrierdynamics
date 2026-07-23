@@ -36,8 +36,11 @@
 #include "G4SystemOfUnits.hh"
 #include "G4Threading.hh"
 #include "G4UnitsTable.hh"
+#include "G4Version.hh"
+#include "Randomize.hh"
 
 #include <algorithm>
+#include <cstdlib>
 #include <fstream>
 #include <iomanip>
 #include <string>
@@ -199,6 +202,93 @@ void ConfigurePrimaryAbsorberPath(G4AnalysisManager* analysis, G4int ih,
 void ConfigurePrimaryTotalPath(G4AnalysisManager* analysis, G4int ih)
 {
   analysis->SetH1(ih, 150, 1.e-5 * mm, 1.e3 * mm, "mm", "none", "log");
+}
+
+// Configure and activate the LET / track-structure H1 and H2 histograms for a
+// single charge-active absorber k. All values are filled already-divided into
+// human units (keV, um, keV/um, MeV), so histograms carry unit "none" and the
+// numeric ranges are in those units. Log axes require a strictly positive lower
+// bound. Retune ranges after pilot runs; never silently accept overflow.
+void ConfigureLetHistograms(G4AnalysisManager* a, DetectorConstruction* det, G4int k)
+{
+  const G4double thickUm = det->GetAbsorThickness(k) / um;
+  const G4double letMin = 1.e-3, letMax = 1.e4;         // keV/um (log)
+  const G4double letMaxHi = 1.e5;                       // keV/um (max-LET, log)
+  const G4double eionMinKeV = 1.e-3, eionMaxKeV = 2.e4; // 1 eV .. 20 MeV (log)
+  const G4double eionMaxAllKeV = 2.e4;                  // 0 .. 20 MeV (linear)
+  const G4double keMinMeV = 1.e-6, keMaxMeV = 2.e1;     // KE (log)
+  const G4double eionMinMeV = 1.e-6, eionMaxMeV = 2.e1; // Eion (log, MeV)
+  const G4double spanMax = std::max(thickUm, 1.e-2);    // depth span (log, um)
+
+  for (G4int c = 0; c < kNbDepositCategories; ++c) {
+    a->SetH1(LetStepCountId(k, c), 180, letMin, letMax, "none", "none", "log");
+    a->SetH1Activation(LetStepCountId(k, c), true);
+    a->SetH1(LetStepEWeightedId(k, c), 180, letMin, letMax, "none", "none", "log");
+    a->SetH1Activation(LetStepEWeightedId(k, c), true);
+    a->SetH1(LetCalcEWeightedId(k, c), 180, letMin, letMax, "none", "none", "log");
+    a->SetH1Activation(LetCalcEWeightedId(k, c), true);
+    a->SetH1(TrackEionCatId(k, c), 160, eionMinKeV, eionMaxKeV, "none", "none", "log");
+    a->SetH1Activation(TrackEionCatId(k, c), true);
+    a->SetH1(TrackLetCatId(k, c), 180, letMin, letMax, "none", "none", "log");
+    a->SetH1Activation(TrackLetCatId(k, c), true);
+    a->SetH1(TrackDepthSpanCatId(k, c), 120, 1.e-3, spanMax, "none", "none", "log");
+    a->SetH1Activation(TrackDepthSpanCatId(k, c), true);
+  }
+
+  a->SetH1(EionEventAllId(k), 400, 0., eionMaxAllKeV, "none");
+  a->SetH1Activation(EionEventAllId(k), true);
+  a->SetH1(EionEventHitId(k), 220, eionMinKeV, eionMaxKeV, "none", "none", "log");
+  a->SetH1Activation(EionEventHitId(k), true);
+  a->SetH1(NielEventId(k), 220, eionMinKeV, eionMaxKeV, "none", "none", "log");
+  a->SetH1Activation(NielEventId(k), true);
+  a->SetH1(LetTEventId(k), 180, letMin, letMax, "none", "none", "log");
+  a->SetH1Activation(LetTEventId(k), true);
+  a->SetH1(LetDdepEventId(k), 180, letMin, letMax, "none", "none", "log");
+  a->SetH1Activation(LetDdepEventId(k), true);
+  a->SetH1(LetDcalcEventId(k), 180, letMin, letMax, "none", "none", "log");
+  a->SetH1Activation(LetDcalcEventId(k), true);
+  a->SetH1(LetMaxEventId(k), 200, letMin, letMaxHi, "none", "none", "log");
+  a->SetH1Activation(LetMaxEventId(k), true);
+  a->SetH1(FracAbove1Id(k), 100, 0., 1., "none");
+  a->SetH1Activation(FracAbove1Id(k), true);
+  a->SetH1(FracAbove2Id(k), 100, 0., 1., "none");
+  a->SetH1Activation(FracAbove2Id(k), true);
+  a->SetH1(FracAbove3Id(k), 100, 0., 1., "none");
+  a->SetH1Activation(FracAbove3Id(k), true);
+  a->SetH1(EionDepthId(k), 120, 0., thickUm, "none");
+  a->SetH1Activation(EionDepthId(k), true);
+  a->SetH1(EionNormDepthId(k), 120, 0., 1., "none");
+  a->SetH1Activation(EionNormDepthId(k), true);
+  a->SetH1(TrackContainmentId(k), 6, 0., 6., "none");
+  a->SetH1Activation(TrackContainmentId(k), true);
+
+  // H2 correlation plots.
+  a->SetH2(H2EventEionVsLetCalcId(k), 220, eionMinMeV, eionMaxMeV, 180, letMin, letMax,
+           "none", "none", "none", "none", "log", "log");
+  a->SetH2Activation(H2EventEionVsLetCalcId(k), true);
+  a->SetH2(H2EventEionVsLetDepId(k), 220, eionMinMeV, eionMaxMeV, 180, letMin, letMax,
+           "none", "none", "none", "none", "log", "log");
+  a->SetH2Activation(H2EventEionVsLetDepId(k), true);
+  a->SetH2(H2LetCalcVsDepthId(k), 120, 0., thickUm, 180, letMin, letMax,
+           "none", "none", "none", "none", "linear", "log");
+  a->SetH2Activation(H2LetCalcVsDepthId(k), true);
+  a->SetH2(H2LetDepVsDepthId(k), 120, 0., thickUm, 180, letMin, letMax,
+           "none", "none", "none", "none", "linear", "log");
+  a->SetH2Activation(H2LetDepVsDepthId(k), true);
+  a->SetH2(H2LetCalcVsKEId(k), 200, keMinMeV, keMaxMeV, 180, letMin, letMax,
+           "none", "none", "none", "none", "log", "log");
+  a->SetH2Activation(H2LetCalcVsKEId(k), true);
+  a->SetH2(H2TrackEionVsLetCalcId(k), 160, eionMinKeV, eionMaxKeV, 180, letMin, letMax,
+           "none", "none", "none", "none", "log", "log");
+  a->SetH2Activation(H2TrackEionVsLetCalcId(k), true);
+  a->SetH2(H2TrackEionVsLetDepId(k), 160, eionMinKeV, eionMaxKeV, 180, letMin, letMax,
+           "none", "none", "none", "none", "log", "log");
+  a->SetH2Activation(H2TrackEionVsLetDepId(k), true);
+  const G4double halfYUm = 0.5 * det->GetCalorSizeY() / um;
+  const G4double halfY = (halfYUm > 0.) ? halfYUm : 1.;
+  a->SetH2(H2DepthVsTransverseId(k), 120, 0., thickUm, 120, -halfY, halfY,
+           "none", "none", "none", "none", "linear", "linear");
+  a->SetH2Activation(H2DepthVsTransverseId(k), true);
 }
 
 }  // namespace
@@ -469,6 +559,36 @@ Run::Run(DetectorConstruction* det) : fDetector(det)
     analysis->SetH1(kComparativeResponseId, nAbs, 0.5, nAbs + 0.5, "MeV");
     analysis->SetH1Activation(kComparativeResponseId, true);
   }
+
+  // LET / track-structure histograms: configure binning and activate for the
+  // charge-active semiconductor absorbers only (all others stay booked but
+  // inactive). These IDs are all >= kMaxHisto, so the legacy-deactivation loop
+  // below does not touch them.
+  for (G4int k = 1; k <= nAbs; ++k) {
+    if (fDetector->IsChargeActiveAbsorber(k)) {
+      ConfigureLetHistograms(analysis, fDetector, k);
+    }
+  }
+
+  // -------------------------------------------------------------------------
+  // Deactivate the entire legacy histogram set.
+  //
+  // The 1-D histograms with IDs in [0, kMaxHisto) are the original
+  // NeutronGammaComplete observables (Edep-by-particle, path lengths, lineage
+  // splits, provenance matrices, moderator spectra, ...). They are being
+  // retired in favour of the LET/track-structure scoring model, whose new H1,
+  // H2, and ntuple objects use IDs >= kMaxHisto and are configured/activated
+  // separately below.
+  //
+  // The SetH1() binning configuration above is left intact so any legacy
+  // histogram can be revived individually just by re-activating it; to bring
+  // the whole legacy set back at once, set kRetireLegacyH1 = false.
+  const G4bool kRetireLegacyH1 = true;
+  if (kRetireLegacyH1) {
+    for (G4int ih = 0; ih < kMaxHisto; ++ih) {
+      analysis->SetH1Activation(ih, false);
+    }
+  }
 }
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
@@ -556,6 +676,20 @@ void Run::SumEdepByOrigin(G4int depositAbsor, G4int originAbsor, G4double de)
   if (depositAbsor < 1 || depositAbsor > kMaxAbsor) return;
   if (originAbsor < 0 || originAbsor >= kNbOrigin) return;
   fEdepByOriginSum[depositAbsor - 1][originAbsor] += de;
+}
+
+//....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
+
+void Run::AccumulateLetTotals(G4int k, G4double edep, G4double eion, G4double niel,
+                              const std::map<G4int, G4double>& eionByCat)
+{
+  if (k < 1 || k >= kMaxAbsor) return;
+  fLetEdep[k] += edep;
+  fLetEion[k] += eion;
+  fLetNiel[k] += niel;
+  for (const auto& [cat, e] : eionByCat) {
+    if (cat >= 0 && cat < kNbDepositCategories) fLetEionByCat[k][cat] += e;
+  }
 }
 
 //....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
@@ -654,6 +788,16 @@ void Run::Merge(const G4Run* run)
   for (G4int d = 0; d < kMaxAbsor; ++d) {
     for (G4int o = 0; o < kNbOrigin; ++o) {
       fEdepByOriginSum[d][o] += localRun->fEdepByOriginSum[d][o];
+    }
+  }
+
+  // LET energy-partition totals (per absorber, per deposit category)
+  for (G4int k = 0; k < kMaxAbsor; ++k) {
+    fLetEdep[k] += localRun->fLetEdep[k];
+    fLetEion[k] += localRun->fLetEion[k];
+    fLetNiel[k] += localRun->fLetNiel[k];
+    for (G4int c = 0; c < kNbDepositCategories; ++c) {
+      fLetEionByCat[k][c] += localRun->fLetEionByCat[k][c];
     }
   }
 
@@ -791,6 +935,8 @@ void Run::EndOfRun()
 
   PrintSecondaryBirthSummary();
 
+  PrintLetEnergyPartition();
+
   // total energy deposited
   //
   fEdepTot /= nEvt;
@@ -892,6 +1038,8 @@ void Run::EndOfRun()
 
   AppendBatchSummaryCsv();
 
+  WriteRunMetadataJson();
+
   // remove all contents in fProcCounter and fEdepByParticle
   fProcCounter.clear();
   for (G4int k = 0; k < kMaxAbsor; k++) {
@@ -900,6 +1048,8 @@ void Run::EndOfRun()
     fSecBirthByCreatorCat[k].clear();
     fNeutronInteractedEvents[k] = 0;
     for (G4int o = 0; o < kNbOrigin; ++o) fEdepByOriginSum[k][o] = 0.;
+    fLetEdep[k] = fLetEion[k] = fLetNiel[k] = 0.;
+    for (G4int c = 0; c < kNbDepositCategories; ++c) fLetEionByCat[k][c] = 0.;
   }
   fGammaAtDetectorFace = 0;
   fEkinSum = 0.;
@@ -1032,6 +1182,202 @@ G4String CsvEscape(const G4String& s)
   return out;
 }
 }  // namespace
+
+namespace
+{
+// Minimal JSON string escaper (quotes, backslash, control chars).
+G4String JsonEscape(const G4String& s)
+{
+  G4String out;
+  for (char ch : s) {
+    switch (ch) {
+      case '"': out += "\\\""; break;
+      case '\\': out += "\\\\"; break;
+      case '\n': out += "\\n"; break;
+      case '\r': out += "\\r"; break;
+      case '\t': out += "\\t"; break;
+      default: out += ch;
+    }
+  }
+  return out;
+}
+
+G4String EnvOrEmpty(const char* name)
+{
+  const char* v = std::getenv(name);
+  return (v != nullptr) ? G4String(v) : G4String("");
+}
+}  // namespace
+
+void Run::PrintLetEnergyPartition() const
+{
+  const G4int nAbs = fDetector->GetNbOfAbsor();
+  G4bool any = false;
+  for (G4int k = 1; k <= nAbs; ++k) {
+    if (fDetector->IsChargeActiveAbsorber(k)) { any = true; break; }
+  }
+  if (!any) return;
+
+  std::ios::fmtflags mode = G4cout.flags();
+  G4int prec = G4cout.precision(4);
+
+  G4cout << "\n LET energy partition (run-summed, charge-active absorbers):\n";
+  G4cout << "   Eion = max(0, Edep - NIEL); NIEL (nuclear stopping) is populated\n"
+         << "   for ions (alpha/He3/GenericIon) and is ~0 for protons/e-/gamma\n"
+         << "   by construction. A near-zero NIEL/Edep with only light primaries\n"
+         << "   is expected; a sudden drop to exactly zero for ion fields would\n"
+         << "   indicate nuclear stopping was lost from the physics list.\n";
+  for (G4int k = 1; k <= nAbs; ++k) {
+    if (!fDetector->IsChargeActiveAbsorber(k)) continue;
+    const G4double ed = fLetEdep[k];
+    const G4double ei = fLetEion[k];
+    const G4double ni = fLetNiel[k];
+    const G4double frac = (ed > 0.) ? 100. * ni / ed : 0.;
+    G4cout << "\n   Absorber " << k << " ("
+           << fDetector->GetAbsorMaterial(k)->GetName() << "):\n";
+    G4cout << "     Edep = " << G4BestUnit(ed, "Energy")
+           << "   Eion = " << G4BestUnit(ei, "Energy")
+           << "   NIEL = " << G4BestUnit(ni, "Energy")
+           << "   NIEL/Edep = " << frac << " %\n";
+    // Per-deposit-category Eion breakdown (only nonzero categories).
+    G4cout << "     Eion by deposit category:\n";
+    for (G4int c = 0; c < kNbDepositCategories; ++c) {
+      if (fLetEionByCat[k][c] <= 0.) continue;
+      const G4double f = (ei > 0.) ? 100. * fLetEionByCat[k][c] / ei : 0.;
+      G4cout << "       " << std::setw(14) << DepositCategoryName(c) << " : "
+             << G4BestUnit(fLetEionByCat[k][c], "Energy")
+             << "  (" << f << " % of Eion)\n";
+    }
+  }
+  G4cout << "------------------------------------------------------------\n";
+
+  G4cout.setf(mode, std::ios::floatfield);
+  G4cout.precision(prec);
+}
+
+//....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
+
+void Run::WriteRunMetadataJson() const
+{
+  // Derive the sidecar name from the analysis file base ("<stem>_metadata.json").
+  G4String stem = G4AnalysisManager::Instance()->GetFileName();
+  if (stem.empty()) stem = "Hadr05";
+  const std::size_t dot = stem.rfind(".root");
+  if (dot != std::string::npos && dot == stem.size() - 5) {
+    stem = stem.substr(0, dot);
+  }
+  const G4String path = stem + "_metadata.json";
+
+  std::ofstream out(path.c_str());
+  if (!out.good()) {
+    G4cerr << "\n *** Run::WriteRunMetadataJson: cannot open \"" << path
+           << "\" for writing." << G4endl;
+    return;
+  }
+
+  const G4double keV_um = keV / micrometer;
+  const G4int nAbs = fDetector->GetNbOfAbsor();
+
+  out << std::setprecision(10);
+  out << "{\n";
+  out << "  \"schema\": \"CarrierDynamics.RunMetadata/1\",\n";
+  out << "  \"geant4_version\": \"" << JsonEscape(G4Version) << "\",\n";
+  out << "  \"geant4_version_number\": " << G4VERSION_NUMBER << ",\n";
+  out << "  \"run_id\": " << GetRunID() << ",\n";
+  out << "  \"n_events\": " << numberOfEvent << ",\n";
+  out << "  \"physics_list\": \"custom PhysicsList (see PhysicsList.cc)\",\n";
+  out << "  \"em_physics\": \"G4EmStandardPhysics_option4\",\n";
+  out << "  \"niel_source\": \"G4NuclearStopping (ions only; NIEL~0 for proton/e/gamma)\",\n";
+
+  // Primary source.
+  out << "  \"primary\": {\n";
+  out << "    \"particle\": \""
+      << JsonEscape(fParticle != nullptr ? fParticle->GetParticleName() : "unknown")
+      << "\",\n";
+  out << "    \"mean_kinetic_energy_MeV\": " << fEkin / MeV << ",\n";
+  out << "    \"description\": \"" << JsonEscape(fPrimaryDesc) << "\"\n";
+  out << "  },\n";
+
+  // Transport / convergence settings.
+  out << "  \"transport\": {\n";
+  out << "    \"absorber_range_cut_um\": "
+      << fDetector->GetAbsorberRangeCut() / micrometer << ",\n";
+  out << "    \"absorber_max_step_um\": "
+      << fDetector->GetAbsorberMaxStep() / micrometer << "\n";
+  out << "  },\n";
+
+  // Geometry (per absorber).
+  out << "  \"geometry\": {\n";
+  out << "    \"n_absorbers\": " << nAbs << ",\n";
+  out << "    \"transverse_area_cm2\": "
+      << fDetector->GetCalorTransverseArea() / cm2 << ",\n";
+  out << "    \"absorbers\": [\n";
+  for (G4int k = 1; k <= nAbs; ++k) {
+    const G4String matName =
+        (fDetector->GetAbsorMaterial(k) != nullptr)
+            ? fDetector->GetAbsorMaterial(k)->GetName()
+            : G4String("unknown");
+    out << "      { \"index\": " << k << ", \"material\": \""
+        << JsonEscape(matName) << "\", \"thickness_um\": "
+        << fDetector->GetAbsorThickness(k) / micrometer
+        << ", \"charge_active\": "
+        << (fDetector->IsChargeActiveAbsorber(k) ? "true" : "false")
+        << ", \"pair_creation_energy_eV\": "
+        << fDetector->GetPairCreationEnergy(k) / eV << " }"
+        << (k < nAbs ? "," : "") << "\n";
+  }
+  out << "    ]\n";
+  out << "  },\n";
+
+  // Run-summed LET energy partition per charge-active absorber (provenance +
+  // NIEL regression guard). eion/niel/edep in keV; niel_over_edep dimensionless.
+  out << "  \"let_energy_partition\": [\n";
+  {
+    G4bool first = true;
+    for (G4int k = 1; k <= nAbs; ++k) {
+      if (!fDetector->IsChargeActiveAbsorber(k)) continue;
+      const G4double ed = fLetEdep[k];
+      const G4double frac = (ed > 0.) ? fLetNiel[k] / ed : 0.;
+      if (!first) out << ",\n";
+      first = false;
+      out << "    { \"absorber\": " << k << ", \"edep_keV\": " << ed / keV
+          << ", \"eion_keV\": " << fLetEion[k] / keV
+          << ", \"niel_keV\": " << fLetNiel[k] / keV
+          << ", \"niel_over_edep\": " << frac << " }";
+    }
+    if (!first) out << "\n";
+  }
+  out << "  ],\n";
+
+  // Analysis definitions.
+  out << "  \"analysis\": {\n";
+  out << "    \"default_pair_creation_energy_eV\": "
+      << kDefaultPairCreationEnergy / eV << ",\n";
+  out << "    \"let_thresholds_keV_per_um\": [" << kLetThreshold1 / keV_um << ", "
+      << kLetThreshold2 / keV_um << ", " << kLetThreshold3 / keV_um << "]\n";
+  out << "  },\n";
+
+  // Nuclear-data / dataset environment.
+  out << "  \"datasets\": {\n";
+  const char* envVars[] = {"G4NEUTRONHPDATA", "G4LEDATA",       "G4PARTICLEHPDATA",
+                           "G4PARTICLEXSDATA", "G4ENSDFSTATEDATA", "G4LEVELGAMMADATA",
+                           "G4RADIOACTIVEDATA", "G4SAIDXSDATA"};
+  const G4int nEnv = sizeof(envVars) / sizeof(envVars[0]);
+  for (G4int i = 0; i < nEnv; ++i) {
+    out << "    \"" << envVars[i] << "\": \"" << JsonEscape(EnvOrEmpty(envVars[i]))
+        << "\"" << (i < nEnv - 1 ? "," : "") << "\n";
+  }
+  out << "  },\n";
+
+  // RNG + provenance.
+  out << "  \"rng_seed\": " << CLHEP::HepRandom::getTheSeed() << ",\n";
+  out << "  \"git_commit\": \"" << JsonEscape(EnvOrEmpty("GIT_COMMIT")) << "\"\n";
+  out << "}\n";
+
+  G4cout << " Run metadata written : " << path << G4endl;
+}
+
+//....oooOO0OOooo........oooOO0OOooo........oooOO0OOooo........oooOO0OOooo......
 
 void Run::AppendBatchSummaryCsv()
 {

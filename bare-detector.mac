@@ -1,0 +1,53 @@
+# Bare calorimeter in air: collimated neutron beam only — no bud box, moderator,
+# encasement, or shielding. Standard contiguous absorber stack (Ag / PNDI-T10 /
+# ITO / QuartzGlass). World is air; 5 cm of air between the planar source and
+# the stack front face (GPS placement only — absorbers are not gapped).
+#
+# Stack thickness ~0.175 mm; front face at z = +0.088 mm (no bud box).
+# Planar GPS 50 mm upstream of front face: z = 50.09 mm, collimated toward -Z.
+#
+/control/verbose 1
+/run/verbose 1
+#
+/testhadr/det/setNbOfLayers 1
+/testhadr/det/setNbOfAbsor 4
+/testhadr/det/setAbsor 1 G4_Ag        40 nm
+/testhadr/det/setAbsor 2 PNDI-T10-B4C     60 um
+/testhadr/det/setAbsor 3 ITO         100 nm
+/testhadr/det/setAbsor 4 QuartzGlass 1.1 mm
+/testhadr/det/setSizeY 8 mm
+/testhadr/det/setSizeZ 11 mm
+#
+/testhadr/det/setBoxWallThickness 0 mm
+/testhadr/det/setCavityMaterial G4_AIR
+/testhadr/det/setWorldMaterial G4_AIR
+/testhadr/det/setLabSize 2000 2000 2000 mm
+#
+/testhadr/det/setEncasementEnable false
+/testhadr/det/setModeratorEnable false
+#
+#/random/setSeeds 121717810 913154131
+#/random/setSeeds 141734800 443654134
+/random/setSeeds 545734850 455654154
+/run/initialize
+/analysis/setFileName bare-detector
+
+#
+/gps/particle neutron
+/gps/ene/type Mono
+/gps/ene/mono 2.45 MeV
+#
+/gps/pos/type Plane
+/gps/pos/shape Rectangle
+/gps/pos/halfx 5.5 mm
+/gps/pos/halfy 4 mm
+/gps/pos/centre 0 0 50.09 mm
+#
+/gps/ang/type iso
+/gps/ang/rot1 1 0 0
+/gps/ang/rot2 0 1 0
+/gps/ang/mintheta 0 deg
+/gps/ang/maxtheta 0 deg
+#
+/run/printProgress 1000000
+/run/beamOn 500000

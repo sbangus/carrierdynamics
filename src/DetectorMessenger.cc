@@ -150,6 +150,90 @@ DetectorMessenger::DetectorMessenger(DetectorConstruction* Det) : fDetector(Det)
   //
   fIsotopeCmd->AvailableForStates(G4State_PreInit, G4State_Idle);
 
+  // ---- Per-absorber LET-scoring configuration -----------------------------
+  // Flag a layer as a charge-sensitive semiconductor (full LET scoring) and set
+  // its (estimated) pair-creation energy W. Defaults are material-derived in
+  // Construct(); these commands override per absorber. PreInit-only, not
+  // broadcast (they configure geometry-side state before construction).
+  fChargeActiveCmd = new G4UIcommand("/testhadr/det/setChargeActive", this);
+  fChargeActiveCmd->SetGuidance("Flag an absorber as a charge-active semiconductor.");
+  fChargeActiveCmd->SetGuidance("  absor number : from 1 to NbOfAbsor");
+  fChargeActiveCmd->SetGuidance("  active       : true / false");
+  //
+  G4UIparameter* caNbPrm = new G4UIparameter("AbsorNb", 'i', false);
+  caNbPrm->SetGuidance("absor number : from 1 to NbOfAbsor");
+  caNbPrm->SetParameterRange("AbsorNb>0");
+  fChargeActiveCmd->SetParameter(caNbPrm);
+  //
+  G4UIparameter* caActivePrm = new G4UIparameter("active", 'b', false);
+  caActivePrm->SetGuidance("charge-active flag (true/false)");
+  caActivePrm->SetDefaultValue(true);
+  fChargeActiveCmd->SetParameter(caActivePrm);
+  //
+  fChargeActiveCmd->AvailableForStates(G4State_PreInit);
+  fChargeActiveCmd->SetToBeBroadcasted(false);
+
+  fPairCreationCmd = new G4UIcommand("/testhadr/det/setPairCreationEnergy", this);
+  fPairCreationCmd->SetGuidance("Set an absorber's (estimated) pair-creation energy W.");
+  fPairCreationCmd->SetGuidance("  absor number : from 1 to NbOfAbsor");
+  fPairCreationCmd->SetGuidance("  W value (with energy unit) : W>0");
+  //
+  G4UIparameter* pcNbPrm = new G4UIparameter("AbsorNb", 'i', false);
+  pcNbPrm->SetGuidance("absor number : from 1 to NbOfAbsor");
+  pcNbPrm->SetParameterRange("AbsorNb>0");
+  fPairCreationCmd->SetParameter(pcNbPrm);
+  //
+  G4UIparameter* pcValPrm = new G4UIparameter("W", 'd', false);
+  pcValPrm->SetGuidance("pair-creation energy");
+  pcValPrm->SetParameterRange("W>0.");
+  fPairCreationCmd->SetParameter(pcValPrm);
+  //
+  G4UIparameter* pcUnitPrm = new G4UIparameter("unit", 's', false);
+  pcUnitPrm->SetGuidance("unit of W (energy)");
+  G4String pcUnitList = G4UIcommand::UnitsList(G4UIcommand::CategoryOf("eV"));
+  pcUnitPrm->SetParameterCandidates(pcUnitList);
+  fPairCreationCmd->SetParameter(pcUnitPrm);
+  //
+  fPairCreationCmd->AvailableForStates(G4State_PreInit);
+  fPairCreationCmd->SetToBeBroadcasted(false);
+
+  // ---- Convergence controls + StepLET gating ------------------------------
+  fLetDir = new G4UIdirectory("/testhadr/let/");
+  fLetDir->SetGuidance("LET / track-structure scoring controls.");
+
+  fAbsorberRangeCutCmd =
+      new G4UIcmdWithADoubleAndUnit("/testhadr/det/setAbsorberRangeCut", this);
+  fAbsorberRangeCutCmd->SetGuidance("Absorber production range cut (convergence).");
+  fAbsorberRangeCutCmd->SetParameterName("cut", false);
+  fAbsorberRangeCutCmd->SetRange("cut>0.");
+  fAbsorberRangeCutCmd->SetUnitCategory("Length");
+  fAbsorberRangeCutCmd->AvailableForStates(G4State_PreInit);
+  fAbsorberRangeCutCmd->SetToBeBroadcasted(false);
+
+  fAbsorberMaxStepCmd =
+      new G4UIcmdWithADoubleAndUnit("/testhadr/det/setAbsorberMaxStep", this);
+  fAbsorberMaxStepCmd->SetGuidance("Absorber max step limit (convergence).");
+  fAbsorberMaxStepCmd->SetParameterName("step", false);
+  fAbsorberMaxStepCmd->SetRange("step>0.");
+  fAbsorberMaxStepCmd->SetUnitCategory("Length");
+  fAbsorberMaxStepCmd->AvailableForStates(G4State_PreInit);
+  fAbsorberMaxStepCmd->SetToBeBroadcasted(false);
+
+  fWriteStepNtupleCmd = new G4UIcmdWithABool("/testhadr/let/writeStepNtuple", this);
+  fWriteStepNtupleCmd->SetGuidance("Enable the sampled StepLET ntuple (default false).");
+  fWriteStepNtupleCmd->SetParameterName("write", true);
+  fWriteStepNtupleCmd->SetDefaultValue(true);
+  fWriteStepNtupleCmd->AvailableForStates(G4State_PreInit, G4State_Idle);
+  fWriteStepNtupleCmd->SetToBeBroadcasted(false);
+
+  fMaxStepEventsCmd = new G4UIcmdWithAnInteger("/testhadr/let/maxStepEvents", this);
+  fMaxStepEventsCmd->SetGuidance("StepLET is written only for eventID < maxStepEvents.");
+  fMaxStepEventsCmd->SetGuidance("  <= 0 means all events.");
+  fMaxStepEventsCmd->SetParameterName("n", true);
+  fMaxStepEventsCmd->SetDefaultValue(100);
+  fMaxStepEventsCmd->AvailableForStates(G4State_PreInit, G4State_Idle);
+  fMaxStepEventsCmd->SetToBeBroadcasted(false);
+
   // ---- Bud-box / lab environment commands ---------------------------------
   // All geometry-mutating commands are PreInit-only and not broadcast in MT,
   // matching the workspace rule for DetectorMessenger.
@@ -455,6 +539,13 @@ DetectorMessenger::~DetectorMessenger()
   delete fCs137SourceEnableCmd;
   delete fSilverEpoxyBlobCmd;
   delete fSilverEpoxyBlobSizeCmd;
+  delete fChargeActiveCmd;
+  delete fPairCreationCmd;
+  delete fAbsorberRangeCutCmd;
+  delete fAbsorberMaxStepCmd;
+  delete fWriteStepNtupleCmd;
+  delete fMaxStepEventsCmd;
+  delete fLetDir;
   delete fDetDir;
   delete fTestemDir;
 }
@@ -504,6 +595,45 @@ void DetectorMessenger::SetNewValue(G4UIcommand* command, G4String newValue)
     is >> name >> Z >> A >> dens >> unt;
     dens *= G4UIcommand::ValueOf(unt);
     fDetector->MaterialWithSingleIsotope(name, name, dens, Z, A);
+  }
+
+  if (command == fChargeActiveCmd) {
+    G4int num;
+    G4String activeStr;
+    std::istringstream is(newValue);
+    is >> num >> activeStr;
+    fDetector->SetChargeActiveAbsorber(num,
+                                       G4UIcommand::ConvertToBool(activeStr));
+  }
+
+  if (command == fPairCreationCmd) {
+    G4int num;
+    G4double value;
+    G4String unt;
+    std::istringstream is(newValue);
+    is >> num >> value >> unt;
+    value *= G4UIcommand::ValueOf(unt);
+    fDetector->SetPairCreationEnergy(num, value);
+  }
+
+  if (command == fAbsorberRangeCutCmd) {
+    fDetector->SetAbsorberRangeCut(
+        fAbsorberRangeCutCmd->GetNewDoubleValue(newValue));
+  }
+
+  if (command == fAbsorberMaxStepCmd) {
+    fDetector->SetAbsorberMaxStep(
+        fAbsorberMaxStepCmd->GetNewDoubleValue(newValue));
+  }
+
+  if (command == fWriteStepNtupleCmd) {
+    fDetector->SetWriteStepNtuple(
+        fWriteStepNtupleCmd->GetNewBoolValue(newValue));
+  }
+
+  if (command == fMaxStepEventsCmd) {
+    fDetector->SetMaxStepEvents(
+        fMaxStepEventsCmd->GetNewIntValue(newValue));
   }
 
   if (command == fBoxExternalCmd) {
