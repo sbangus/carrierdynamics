@@ -1,0 +1,48 @@
+name: Device physics ROOT inventory
+
+on:
+  push:
+    branches:
+      - chatgpt/device-physics-figures-20260731
+    paths:
+      - analysis/inventory_root_outputs.py
+      - .github/workflows/device-physics-root-inventory.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  inventory:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Check out repository and LFS files
+        uses: actions/checkout@v4
+        with:
+          lfs: true
+          fetch-depth: 1
+
+      - name: Verify LFS downloads
+        run: |
+          git lfs pull
+          ls -lh build/bare-detector-*.root
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install analysis dependencies
+        run: python -m pip install --upgrade pip numpy uproot awkward
+
+      - name: Inventory ROOT objects
+        run: python analysis/inventory_root_outputs.py
+
+      - name: Upload inventory
+        uses: actions/upload-artifact@v4
+        with:
+          name: device-physics-root-inventory
+          path: root_inventory/
+          if-no-files-found: error
+          retention-days: 7
