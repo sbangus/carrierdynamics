@@ -1,9 +1,9 @@
 name: Device physics ROOT inventory
 
 on:
-  push:
+  pull_request:
     branches:
-      - chatgpt/device-physics-figures-20260731
+      - main
     paths:
       - analysis/inventory_root_outputs.py
       - .github/workflows/device-physics-root-inventory.yml
