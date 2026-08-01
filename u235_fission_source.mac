@@ -1,0 +1,298 @@
+# ============================================================================
+#  u235_fission_source.mac
+#
+#  RAW (unmoderated) prompt-fission neutron source for PUR-1.
+#  Watt spectrum for thermal-neutron-induced fission of U-235:
+#
+#      chi(E) = C * exp(-E/a) * sinh( sqrt(b*E) )
+#      a = 0.988 MeV,  b = 2.249 1/MeV     (ENDF/B-VII.1, U-235 thermal)
+#
+#  Verified moments of the tabulation below:
+#      <E>  = 2.033 MeV   (analytic a*(1.5 + ab/4) = 2.031 MeV, +0.12%)
+#      mode = 0.743 MeV
+#      integral error from linear interpolation on this grid: -0.05%
+#      fraction above 1 MeV  0.699 | above 2 MeV  0.406 | above 5 MeV  0.056
+#
+#  NOTE ON ENRICHMENT: 19.75% vs any other enrichment does not change
+#  chi(E). The emitted spectrum is a property of the fissioning nuclide,
+#  not the fuel composition. Enrichment sets k-eff and the fission rate per
+#  unit flux, and at PUR-1's burnup the U-238 fast-fission and Pu-239
+#  contributions to the source are together well under 2%, so a pure
+#  U-235 thermal Watt spectrum is the right choice.
+#
+#  This macro emits ONLY first-generation prompt fission neutrons,
+#  isotropically, with no moderation, no delayed neutrons and no gammas.
+#  Read the NORMALIZATION and the DOUBLE-COUNTING WARNING at the bottom.
+#
+#  /gps/hist/point energies are in MeV (that command takes no unit string).
+# ============================================================================
+
+/gps/verbose 0
+/gps/particle neutron
+
+
+# ----------------------------------------------------------------------------
+#  ANGULAR: isotropic. Fission fragments are slow enough that lab-frame
+#  anisotropy of the emitted neutrons is negligible.
+# ----------------------------------------------------------------------------
+/gps/ang/type iso
+/gps/ang/mintheta   0. deg
+/gps/ang/maxtheta 180. deg
+/gps/ang/minphi     0. deg
+/gps/ang/maxphi   360. deg
+
+
+# ----------------------------------------------------------------------------
+#  POSITION -- pick ONE of the three blocks below.
+# ----------------------------------------------------------------------------
+
+# --- (A) DEFAULT: sample uniformly inside the fuel meat -------------------
+#     Sampling box must enclose the whole core; confine rejects anything
+#     outside the named PHYSICAL volume. If all your fuel plates share one
+#     placement name (replica / parameterised), confine populates them all.
+#     Replace fuelMeatPV with your actual physical volume name and set the
+#     half-lengths to enclose your core envelope.
+/gps/pos/type Volume
+/gps/pos/shape Para
+/gps/pos/centre 0. 0. 0. cm
+/gps/pos/halfx 12. cm
+/gps/pos/halfy 12. cm
+/gps/pos/halfz 30. cm
+/gps/pos/confine fuelMeatPV
+
+# --- (B) point source (single plate, or a far-field check) ----------------
+# /gps/pos/type Point
+# /gps/pos/centre 0. 0. 0. cm
+# /gps/pos/confine NULL
+
+# --- (C) homogenised core box, no confinement ----------------------------
+#     Faster than (A) but births neutrons in the water channels too, which
+#     softens the leakage spectrum slightly. Fine for far-field work.
+# /gps/pos/type Volume
+# /gps/pos/shape Para
+# /gps/pos/centre 0. 0. 0. cm
+# /gps/pos/halfx 10. cm
+# /gps/pos/halfy 10. cm
+# /gps/pos/halfz 25. cm
+# /gps/pos/confine NULL
+
+
+# ----------------------------------------------------------------------------
+#  ENERGY: Watt spectrum, 97-point tabulation, peak normalised to 1.
+#          GPS renormalises internally, so absolute scale is irrelevant.
+# ----------------------------------------------------------------------------
+/gps/ene/type Arb
+/gps/hist/type arb
+/gps/hist/point 1e-05      5.979155e-03
+/gps/hist/point 5e-05      1.336946e-02
+/gps/hist/point 0.0001     1.890666e-02
+/gps/hist/point 0.00025    2.989120e-02
+/gps/hist/point 0.0005     4.226581e-02
+/gps/hist/point 0.00075    5.175659e-02
+/gps/hist/point 0.001      5.975384e-02
+/gps/hist/point 0.0015     7.315989e-02
+/gps/hist/point 0.002      8.445084e-02
+/gps/hist/point 0.003      1.033648e-01
+/gps/hist/point 0.005      1.332734e-01
+/gps/hist/point 0.0075     1.629659e-01
+/gps/hist/point 0.01       1.878770e-01
+/gps/hist/point 0.015      2.293685e-01
+/gps/hist/point 0.02       2.640080e-01
+/gps/hist/point 0.03       3.212838e-01
+/gps/hist/point 0.04       3.686226e-01
+/gps/hist/point 0.05       4.095041e-01
+/gps/hist/point 0.065      4.624421e-01
+/gps/hist/point 0.08       5.081218e-01
+/gps/hist/point 0.1        5.608467e-01
+/gps/hist/point 0.2        7.435783e-01
+/gps/hist/point 0.3        8.533266e-01
+/gps/hist/point 0.4        9.228094e-01
+/gps/hist/point 0.5        9.657996e-01
+/gps/hist/point 0.6        9.899156e-01
+/gps/hist/point 0.7        1.000000e+00
+/gps/hist/point 0.8        9.993998e-01
+/gps/hist/point 0.9        9.905587e-01
+/gps/hist/point 1          9.753293e-01
+/gps/hist/point 1.1        9.551540e-01
+/gps/hist/point 1.2        9.311776e-01
+/gps/hist/point 1.3        9.043212e-01
+/gps/hist/point 1.4        8.753334e-01
+/gps/hist/point 1.5        8.448266e-01
+/gps/hist/point 1.6        8.133041e-01
+/gps/hist/point 1.7        7.811803e-01
+/gps/hist/point 1.8        7.487966e-01
+/gps/hist/point 1.9        7.164337e-01
+/gps/hist/point 2          6.843217e-01
+/gps/hist/point 2.1        6.526483e-01
+/gps/hist/point 2.2        6.215650e-01
+/gps/hist/point 2.3        5.911933e-01
+/gps/hist/point 2.4        5.616288e-01
+/gps/hist/point 2.5        5.329454e-01
+/gps/hist/point 2.6        5.051983e-01
+/gps/hist/point 2.7        4.784273e-01
+/gps/hist/point 2.8        4.526587e-01
+/gps/hist/point 2.9        4.279077e-01
+/gps/hist/point 3          4.041800e-01
+/gps/hist/point 3.1        3.814734e-01
+/gps/hist/point 3.2        3.597792e-01
+/gps/hist/point 3.3        3.390831e-01
+/gps/hist/point 3.4        3.193666e-01
+/gps/hist/point 3.5        3.006072e-01
+/gps/hist/point 3.6        2.827798e-01
+/gps/hist/point 3.7        2.658570e-01
+/gps/hist/point 3.8        2.498097e-01
+/gps/hist/point 3.9        2.346075e-01
+/gps/hist/point 4          2.202192e-01
+/gps/hist/point 4.25       1.876006e-01
+/gps/hist/point 4.5        1.593733e-01
+/gps/hist/point 4.75       1.350525e-01
+/gps/hist/point 5          1.141785e-01
+/gps/hist/point 5.25       9.632468e-02
+/gps/hist/point 5.5        8.110179e-02
+/gps/hist/point 5.75       6.815891e-02
+/gps/hist/point 6          5.718302e-02
+/gps/hist/point 6.25       4.789734e-02
+/gps/hist/point 6.5        4.005879e-02
+/gps/hist/point 6.75       3.345529e-02
+/gps/hist/point 7          2.790275e-02
+/gps/hist/point 7.25       2.324213e-02
+/gps/hist/point 7.5        1.933662e-02
+/gps/hist/point 7.75       1.606893e-02
+/gps/hist/point 8          1.333888e-02
+/gps/hist/point 8.25       1.106115e-02
+/gps/hist/point 8.5        9.163261e-03
+/gps/hist/point 8.75       7.583816e-03
+/gps/hist/point 9          6.270919e-03
+/gps/hist/point 9.25       5.180797e-03
+/gps/hist/point 9.5        4.276608e-03
+/gps/hist/point 9.75       3.527394e-03
+/gps/hist/point 10         2.907191e-03
+/gps/hist/point 10.5       1.970413e-03
+/gps/hist/point 11         1.331810e-03
+/gps/hist/point 11.5       8.978619e-04
+/gps/hist/point 12         6.038534e-04
+/gps/hist/point 12.5       4.052034e-04
+/gps/hist/point 13         2.713267e-04
+/gps/hist/point 14         1.209405e-04
+/gps/hist/point 15         5.352251e-05
+/gps/hist/point 16         2.353390e-05
+/gps/hist/point 17         1.028736e-05
+/gps/hist/point 18         4.472886e-06
+/gps/hist/point 19         1.935252e-06
+/gps/hist/point 20         8.335265e-07
+/gps/hist/inter Lin
+
+
+# ----------------------------------------------------------------------------
+/gps/source/list
+# ----------------------------------------------------------------------------
+
+# /run/beamOn 10000000
+
+
+# ============================================================================
+#  NORMALIZATION -- from reactor power (unambiguous, use this)
+# ============================================================================
+#  Fissions per second:   P / (200 MeV)  =  P[W] / 3.204e-11 J
+#  Source neutrons:       x nu-bar,  nu = 2.4367 for U-235 thermal
+#                                    (prompt 2.4200 + delayed 0.0167)
+#
+#      P = 12 kW   ->  3.745e14 fiss/s  ->  S = 9.13e14 n/s
+#      P = 10 kW   ->  3.121e14 fiss/s  ->  S = 7.61e14 n/s
+#      P =  1 kW   ->  3.121e13 fiss/s  ->  S = 7.61e13 n/s
+#
+#  The 200 MeV/fission convention carries about +/-3%; it is the recoverable
+#  energy including delayed betas and gammas, which is the right convention
+#  to pair with a measured steady-state thermal power.
+#
+#  Per-primary weight for N simulated histories:
+#      w = S / N          [n/s per primary]
+#      N = 1e7, P = 12 kW  ->  w = 9.13e7 n/s per primary
+#
+#  Any tally scales as:  rate = (tally sum / N) * S
+#
+#  You do NOT need the fuel meat volume. GPS with confine samples uniformly
+#  over the meat, so the spatial density is already correct; S is a pure
+#  scalar multiplier applied afterwards.
+#
+#  CROSS-CHECK from your 3e10 flux (optional):
+#      R_f = N_235 * sigma_f_bar * PHI_th      [fissions/cm3/s]
+#      sigma_f(0.0253 eV) = 585 b
+#      sigma_f_bar ~ 505 b for a 293.6 K Maxwellian FLUX spectrum
+#                   (= (2/sqrt(pi)) * g_f * sigma_0, g_f = 0.976)
+#  Beware the convention: whether PHI_th means the 2200 m/s-equivalent flux
+#  or the integral of the Maxwellian changes this by 2/sqrt(pi) = 0.886.
+#  Multiply R_f by the meat volume and by nu to get S, and check it against
+#  the power-based number above. If they disagree by more than ~30% your
+#  flux figure and your power figure are not describing the same state.
+#
+#  FLAT SOURCE ASSUMPTION: uniform sampling in the meat means a flat fission
+#  density. A real MTR core runs peak-to-average ~1.3-1.5 axially (cosine-ish)
+#  and radially, modified upward at the edges by the graphite reflector. GPS
+#  cannot impose an arbitrary 3D shape in one source; if it matters, split
+#  into several sources with /gps/source/add, each confined to a different
+#  axial slice or assembly group, with intensities following the shape.
+#
+# ============================================================================
+#  DOUBLE-COUNTING WARNING -- read this if your geometry contains the fuel
+# ============================================================================
+#  At steady state the total fission neutron birth rate S already accounts
+#  for every generation: every generation is the same size. So emitting S
+#  Watt neutrons and transporting them ONE generation gives the correct
+#  steady-state flux everywhere.
+#
+#  If you leave fissile material in the transport geometry with _HP physics,
+#  Geant4 will induce further fissions and multiply your source. You then get
+#  flux ~ S/(1-k), which for PUR-1 (k ~ 1) is unbounded and numerically
+#  meaningless -- the answer will depend entirely on how close your modelled
+#  k lands to unity. Suppress induced-fission neutrons in a StackingAction:
+#
+#      G4ClassificationOfNewTrack
+#      MyStackingAction::ClassifyNewTrack(const G4Track* trk)
+#      {
+#        if (trk->GetParentID() == 0) return fUrgent;         // primaries
+#        const G4VProcess* cr = trk->GetCreatorProcess();
+#        if (trk->GetDefinition() == G4Neutron::Definition()
+#            && cr && cr->GetProcessName() == "nFission") return fKill;
+#        return fUrgent;
+#      }
+#
+#  Kill only the NEUTRONS, not the whole nFission secondary list -- the
+#  prompt fission gammas are real field that your neutron-only source does
+#  not supply, and you may want them for the gamma background.
+#
+#  If your geometry is moderator + detector only, with no fuel, none of this
+#  applies and the macro is complete as written.
+#
+# ============================================================================
+#  OTHER THINGS THAT WILL BITE
+# ============================================================================
+#  1. DELAYED NEUTRONS. 0.0167/2.4367 = 0.69% of the source, mean energy
+#     ~0.4-0.5 MeV instead of 2.03 MeV. Negligible for a prompt-response
+#     detector; matters only for kinetics or a pulsed-source measurement.
+#     If you need it, add a second GPS source at intensity 0.0069 with a
+#     Maxwellian at T = 0.30 MeV.
+#
+#  2. STATISTICS THROUGH THE POOL. If your detector sits any real distance
+#     into 5.2 m of water, an analogue run will deliver essentially zero
+#     tallies -- each mean free path costs you an order of magnitude.
+#     Geant4 has no weight windows. Either keep the detector near the core,
+#     or do it in two steps: run once to score a surface current on a shell
+#     around the core, then use that as an Arb-tabulated surface source for
+#     the second stage.
+#
+#  3. THERMAL SCATTERING. You are starting at 2 MeV and moderating down to
+#     0.0253 eV, so the last few decades depend entirely on having
+#     S(alpha,beta) enabled -- use an _HPT physics list variant or add
+#     G4NeutronHPThermalScattering explicitly, and register the thermal
+#     scattering material names for your water and your polymer. Without it
+#     the free-gas approximation puts your B-10 capture rate off by a
+#     noticeable factor.
+#
+#  4. VALIDATION. beamOn 1e5 and histogram primary KE before scoring:
+#     peak at 0.74 MeV, mean 2.03 MeV, and 40.6% of primaries above 2 MeV.
+#     If the peak lands at 0.74 eV or 0.74 GeV, the /gps/hist/point unit
+#     assumption is wrong for your Geant4 version -- fix it before anything
+#     else. Also verify /gps/source/list reports the confine volume as
+#     found; a typo'd volume name silently gives you an unconfined box.
+# ============================================================================

@@ -43,8 +43,8 @@
 # Centre z = 12.5 + 4.6 mm.
 /gps/pos/type Plane
 /gps/pos/shape Rectangle
-/gps/pos/halfx 25.75 mm
-/gps/pos/halfy 13.25 mm
+/gps/pos/halfx 50 mm
+/gps/pos/halfy 50 mm
 /gps/pos/centre 0 0 17.1 mm
 #/gps/pos/centre 0 0 12.5 mm
 #
@@ -56,5 +56,5 @@
 /gps/ang/maxtheta 60 deg
 #
 /random/setSeeds 123452784 927654323
-/run/printProgress 10000
-/run/beamOn 100000
+/run/printProgress 100000
+/run/beamOn 1000000

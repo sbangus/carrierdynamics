@@ -56,30 +56,41 @@ void ConfigureSecondaryESpec(G4AnalysisManager* analysis, G4int ih, G4int partId
   G4double vmax = 2.e1 * MeV;
   switch (partIdx) {
     case 4:  // gamma
-      nbins = 200;
-      vmin = 1.e-3 * MeV;
-      vmax = 5. * MeV;
+      // Capture / Compton / inelastic lines down to ~10 eV; keep headroom to
+      // 20 MeV for high-energy capture cascades.
+      nbins = 240;
+      vmin = 10. * eV;
+      vmax = 20. * MeV;
       break;
     case 5:  // e-
-      nbins = 150;
-      vmin = 1.e-3 * MeV;
+      // Delta-ray and Compton/photoelectron births are dominated by sub-keV
+      // electrons; the old 1 keV floor put ~95% of fills into underflow.
+      nbins = 240;
+      vmin = 10. * eV;
       vmax = 20. * MeV;
       break;
     case 3:  // proton
-      nbins = 100;
-      vmin = 50. * keV;
-      vmax = 10. * MeV;
+      // Soft H recoils from low-E neutron elastic can sit below 50 keV.
+      nbins = 180;
+      vmin = 1. * keV;
+      vmax = 20. * MeV;
       break;
-    case 0:
+    case 0:  // alpha
+      nbins = 150;
+      vmin = 100. * keV;
+      vmax = 20. * MeV;
+      break;
     case 1:
-    case 2:  // alpha, Li7, Li6
+    case 2:  // Li7, Li6
       nbins = 150;
       vmin = 100. * keV;
       vmax = 5. * MeV;
       break;
-    case 6:  // C12
-      nbins = 100;
-      vmin = 1. * MeV;
+    case 6:  // carbon (C12, C13, ...)
+      // For En = 2.45 MeV on C-12 the kinematic recoil ceiling is ~0.70 MeV;
+      // the previous 1 MeV floor put every carbon fill into underflow.
+      nbins = 220;
+      vmin = 0.1 * keV;
       vmax = 20. * MeV;
       break;
     default:
@@ -106,7 +117,7 @@ void TrackLengthParticleBinning(G4int partIdx, G4int& nbins, G4double& vmin)
     case 0:
     case 1:
     case 2:
-    case 6:  // alpha, Li7, Li6, C12 (heavy ions: short, sub-mm ranges)
+    case 6:  // alpha, Li7, Li6, carbon (heavy ions: short, sub-mm ranges)
       nbins = 150;
       vmin = 1.e-5 * mm;  // 10 nm
       break;
@@ -261,6 +272,21 @@ void ConfigureLetHistograms(G4AnalysisManager* a, DetectorConstruction* det, G4i
   a->SetH1Activation(EionNormDepthId(k), true);
   a->SetH1(TrackContainmentId(k), 6, 0., 6., "none");
   a->SetH1Activation(TrackContainmentId(k), true);
+
+  // Primary-only LET families (ParentID == 0). Same ranges as the combined
+  // step/track spectra so Am-241 primary alphas and similar cases stay in-range.
+  a->SetH1(PrimaryLetStepCountId(k), 180, letMin, letMax, "none", "none", "log");
+  a->SetH1Activation(PrimaryLetStepCountId(k), true);
+  a->SetH1(PrimaryLetStepEWeightedId(k), 180, letMin, letMax, "none", "none", "log");
+  a->SetH1Activation(PrimaryLetStepEWeightedId(k), true);
+  a->SetH1(PrimaryLetCalcEWeightedId(k), 180, letMin, letMax, "none", "none", "log");
+  a->SetH1Activation(PrimaryLetCalcEWeightedId(k), true);
+  a->SetH1(PrimaryTrackEionId(k), 160, eionMinKeV, eionMaxKeV, "none", "none", "log");
+  a->SetH1Activation(PrimaryTrackEionId(k), true);
+  a->SetH1(PrimaryTrackLetId(k), 180, letMin, letMax, "none", "none", "log");
+  a->SetH1Activation(PrimaryTrackLetId(k), true);
+  a->SetH1(PrimaryTrackDepthSpanId(k), 120, 1.e-3, spanMax, "none", "none", "log");
+  a->SetH1Activation(PrimaryTrackDepthSpanId(k), true);
 
   // H2 correlation plots.
   a->SetH2(H2EventEionVsLetCalcId(k), 220, eionMinMeV, eionMaxMeV, 180, letMin, letMax,
@@ -420,13 +446,13 @@ Run::Run(DetectorConstruction* det) : fDetector(det)
   // with the 1 keV all-e- ConfigureSecondaryESpec floor) is resolved. The
   // first-generation ion-mediated histogram is expected to stay ~empty:
   // primaries are gammas/neutrons and neutrons do not directly produce e-.
-  analysis->SetH1(kSecESpecElectronGamma, 150, 1.e-5 * MeV, 3. * MeV, "MeV", "none", "log");
+  analysis->SetH1(kSecESpecElectronGamma, 150, 1.e-5 * MeV, 2. * MeV, "MeV", "none", "log");
   analysis->SetH1Activation(kSecESpecElectronGamma, true);
-  analysis->SetH1(kSecESpecElectronIonic, 150, 1.e-5 * MeV, 1.e-2 * MeV, "MeV", "none", "log");
+  analysis->SetH1(kSecESpecElectronIonic, 150, 1.e-5 * MeV, 2. * MeV, "MeV", "none", "log");
   analysis->SetH1Activation(kSecESpecElectronIonic, true);
-  analysis->SetH1(kFirstGenSecESpecElectronGamma, 150, 1.e-5 * MeV, 3. * MeV, "MeV", "none", "log");
+  analysis->SetH1(kFirstGenSecESpecElectronGamma, 150, 1.e-5 * MeV, 2. * MeV, "MeV", "none", "log");
   analysis->SetH1Activation(kFirstGenSecESpecElectronGamma, true);
-  analysis->SetH1(kFirstGenSecESpecElectronIonic, 150, 1.e-5 * MeV, 1.e-2 * MeV, "MeV", "none", "log");
+  analysis->SetH1(kFirstGenSecESpecElectronIonic, 150, 1.e-5 * MeV, 2. * MeV, "MeV", "none", "log");
   analysis->SetH1Activation(kFirstGenSecESpecElectronIonic, true);
 
   // Neutron spectrum entering the detector after environment interactions.
@@ -571,7 +597,8 @@ Run::Run(DetectorConstruction* det) : fDetector(det)
   }
 
   // -------------------------------------------------------------------------
-  // Deactivate the entire legacy histogram set.
+  // Deactivate the legacy histogram set except for detector-face particle
+  // spectra, which remain useful alongside the LET analysis.
   //
   // The 1-D histograms with IDs in [0, kMaxHisto) are the original
   // NeutronGammaComplete observables (Edep-by-particle, path lengths, lineage
@@ -580,12 +607,29 @@ Run::Run(DetectorConstruction* det) : fDetector(det)
   // H2, and ntuple objects use IDs >= kMaxHisto and are configured/activated
   // separately below.
   //
-  // The SetH1() binning configuration above is left intact so any legacy
-  // histogram can be revived individually just by re-activating it; to bring
-  // the whole legacy set back at once, set kRetireLegacyH1 = false.
+  // Keep the secondary birth spectra and the all-neutron, primary-neutron,
+  // and all-gamma detector-front spectra active. For a neutron-only source
+  // such as PUR-1, the gamma histogram therefore measures gammas generated by
+  // environmental interactions, while the difference between all and primary
+  // neutron spectra shows the secondary/scattered-neutron contribution.
+  //
+  // The SetH1() binning configuration above is left intact so any other
+  // legacy histogram can be revived individually; to bring the whole legacy
+  // set back at once, set kRetireLegacyH1 = false.
   const G4bool kRetireLegacyH1 = true;
   if (kRetireLegacyH1) {
     for (G4int ih = 0; ih < kMaxHisto; ++ih) {
+      const G4bool secondaryBirthSpectrum =
+          (ih >= kSecESpecBase && ih < kSecESpecBase + kNbFixedParticles)
+          || (ih >= kFirstGenSecESpecBase
+              && ih < kFirstGenSecESpecBase + kNbFixedParticles);
+      if (secondaryBirthSpectrum
+          || ih == kDetectorFrontKEAll
+          || ih == kDetectorFrontKEPrimary
+          || ih == kDetectorFrontGammaKE)
+      {
+        continue;
+      }
       analysis->SetH1Activation(ih, false);
     }
   }

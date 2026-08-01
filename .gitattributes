@@ -1,0 +1,2 @@
+*.root filter=lfs diff=lfs merge=lfs -text
+build/*.root filter=lfs diff=lfs merge=lfs -text

@@ -86,9 +86,23 @@ G4String LetH1Title(G4int k)
     return perAbs("dEion/dz absolute depth profile", k - kEionDepthBase);
   if (k >= kEionNormDepthBase && k < kTrackContainBase)
     return perAbs("dEion/du normalized depth profile", k - kEionNormDepthBase);
-  if (k >= kTrackContainBase && k < kMaxHistoLet)
+  if (k >= kTrackContainBase && k < kPrimaryLetStepCountBase)
     return perAbs("Track containment (0=unk,1=cont,2=front,3=back,4=lat,5=multi)",
                   k - kTrackContainBase);
+  if (k >= kPrimaryLetStepCountBase && k < kPrimaryLetStepEWeightedBase)
+    return perAbs("Primary LETdep step-count spectrum", k - kPrimaryLetStepCountBase);
+  if (k >= kPrimaryLetStepEWeightedBase && k < kPrimaryLetCalcEWeightedBase)
+    return perAbs("Primary LETdep Eion-weighted spectrum",
+                  k - kPrimaryLetStepEWeightedBase);
+  if (k >= kPrimaryLetCalcEWeightedBase && k < kPrimaryTrackEionBase)
+    return perAbs("Primary LETcalc Eion-weighted spectrum",
+                  k - kPrimaryLetCalcEWeightedBase);
+  if (k >= kPrimaryTrackEionBase && k < kPrimaryTrackLetBase)
+    return perAbs("Primary track Eion", k - kPrimaryTrackEionBase);
+  if (k >= kPrimaryTrackLetBase && k < kPrimaryTrackDepthSpanBase)
+    return perAbs("Primary track LET", k - kPrimaryTrackLetBase);
+  if (k >= kPrimaryTrackDepthSpanBase && k < kMaxHistoLet)
+    return perAbs("Primary track depth span", k - kPrimaryTrackDepthSpanBase);
 
   return "letH" + std::to_string(k);
 }

@@ -207,6 +207,13 @@ void TrackingAction::PostUserTrackingAction(const G4Track* aTrack)
         analysis->FillH2(H2TrackEionVsLetDepId(absorNum),
                          score.eIon / keV, letDdep / keV_um, trackWeight);
 
+        // Primary-only track LET (incident particle; ParentID == 0, charged).
+        if (parentID == 0 && charge != 0.) {
+          analysis->FillH1(PrimaryTrackEionId(absorNum), score.eIon / keV, trackWeight);
+          analysis->FillH1(PrimaryTrackLetId(absorNum), trackLET / keV_um, trackWeight);
+          analysis->FillH1(PrimaryTrackDepthSpanId(absorNum), depthSpan / um, trackWeight);
+        }
+
         // TrackLET ntuple row (column order MUST match HistoManager booking).
         const G4int nt = kNtupleTrackLet;
         G4int col = 0;

@@ -406,6 +406,13 @@ void SteppingAction::UserSteppingAction(const G4Step* aStep)
       analysisManager->FillH2(H2LetDepVsDepthId(absorNum), depth / um, letDep / keV_um, eWeight);
       analysisManager->FillH2(H2LetCalcVsKEId(absorNum), eMid / MeV, letCalc / keV_um, eWeight);
       analysisManager->FillH2(H2DepthVsTransverseId(absorNum), depth / um, localMid.y() / um, eWeight);
+
+      // Primary-only step LET spectra (incident particle; ParentID == 0).
+      if (track->GetParentID() == 0) {
+        analysisManager->FillH1(PrimaryLetStepCountId(absorNum), letDep / keV_um, weight);
+        analysisManager->FillH1(PrimaryLetStepEWeightedId(absorNum), letDep / keV_um, eWeight);
+        analysisManager->FillH1(PrimaryLetCalcEWeightedId(absorNum), letCalc / keV_um, eWeight);
+      }
     }
 
     // Sampled StepLET ntuple row (gated via DetectorConstruction; off by default).

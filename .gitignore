@@ -1,10 +1,12 @@
-# Build outputs
-build/
+# Build outputs (keep ROOT results trackable under build/)
+build/*
+!build/*.root
+
+# Other build trees
 build-ngc/
 build-*/
 
-# Geant4 run artifacts
-*.root
+# Geant4 run binaries (ROOT histograms are tracked via Git LFS)
 Hadr05
 hadr05
 
@@ -19,3 +21,6 @@ __pycache__/
 .DS_Store
 *.swp
 *~
+
+# Exceeds GitHub LFS 2 GiB file limit
+build/Am241.root

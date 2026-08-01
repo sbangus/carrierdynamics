@@ -12,7 +12,7 @@
 /testhadr/det/setNbOfLayers 1
 /testhadr/det/setNbOfAbsor 4
 /testhadr/det/setAbsor 1 G4_Ag        40 nm
-/testhadr/det/setAbsor 2 PNDI-T10-B4C     60 um
+/testhadr/det/setAbsor 2 PNDI-T10     60 um
 /testhadr/det/setAbsor 3 ITO         100 nm
 /testhadr/det/setAbsor 4 QuartzGlass 1.1 mm
 /testhadr/det/setSizeY 8 mm
@@ -30,18 +30,18 @@
 #/random/setSeeds 141734800 443654134
 /random/setSeeds 545734850 455654154
 /run/initialize
-/analysis/setFileName bare-detector
-
+/analysis/setFileName bare-detector-alpha
 #
-/gps/particle neutron
+/gps/source/intensity 1.0
+/gps/particle alpha
 /gps/ene/type Mono
-/gps/ene/mono 2.45 MeV
+/gps/ene/mono 5.5 MeV
 #
 /gps/pos/type Plane
 /gps/pos/shape Rectangle
 /gps/pos/halfx 5.5 mm
 /gps/pos/halfy 4 mm
-/gps/pos/centre 0 0 50.09 mm
+/gps/pos/centre 0 0 8 mm
 #
 /gps/ang/type iso
 /gps/ang/rot1 1 0 0
@@ -49,5 +49,23 @@
 /gps/ang/mintheta 0 deg
 /gps/ang/maxtheta 0 deg
 #
+#/gps/source/intensity 1.0
+#/gps/particle neutron
+#/gps/ene/type Mono
+#/gps/ene/mono 2.45 eV
+#
+#/gps/pos/type Plane
+#/gps/pos/shape Rectangle
+#/gps/pos/halfx 5.5 mm
+#/gps/pos/halfy 4 mm
+#/gps/pos/centre 0 0 50.09 mm
+#
+#/gps/ang/type iso
+#/gps/ang/rot1 1 0 0
+#/gps/ang/rot2 0 1 0
+#/gps/ang/mintheta 0 deg
+#/gps/ang/maxtheta 0 deg
+#
+
 /run/printProgress 1000000
-/run/beamOn 500000
+/run/beamOn 10000

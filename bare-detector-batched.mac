@@ -1,0 +1,104 @@
+# Batched version of bare-detector.mac.
+#
+# Same bare calorimeter geometry and collimated mono neutron beam. Ten
+# sequential /run/beamOn batches, each with a distinct RNG seed and ROOT file.
+# After every batch the master appends long-format Edep-by-particle rows to
+# edep.csv (same quantities as the end-of-run absorber particle table):
+#   run_id,n_events,batch_tag,absorber,material,particle,total_edep_MeV,
+#   gammas_crossing_face
+#
+# NOTE: delete or rename an existing edep.csv if its header differs.
+#
+/control/verbose 1
+/run/verbose 1
+#
+/testhadr/det/setNbOfLayers 1
+/testhadr/det/setNbOfAbsor 4
+/testhadr/det/setAbsor 1 G4_Ag        40 nm
+/testhadr/det/setAbsor 2 PNDI-T10     70 um
+/testhadr/det/setAbsor 3 ITO         100 nm
+/testhadr/det/setAbsor 4 QuartzGlass 1.1 mm
+/testhadr/det/setSizeY 8 mm
+/testhadr/det/setSizeZ 11 mm
+#
+/testhadr/det/setBoxWallThickness 0 mm
+/testhadr/det/setCavityMaterial G4_AIR
+/testhadr/det/setWorldMaterial G4_AIR
+/testhadr/det/setLabSize 2000 2000 2000 mm
+#
+/testhadr/det/setEncasementEnable false
+/testhadr/det/setModeratorEnable false
+#
+/run/initialize
+#
+/gps/particle neutron
+/gps/ene/type Mono
+/gps/ene/mono 2.45 MeV
+#
+/gps/pos/type Plane
+/gps/pos/shape Rectangle
+/gps/pos/halfx 5.5 mm
+/gps/pos/halfy 4 mm
+/gps/pos/centre 0 0 50.09 mm
+#
+/gps/ang/type iso
+/gps/ang/rot1 1 0 0
+/gps/ang/rot2 0 1 0
+/gps/ang/mintheta 0 deg
+/gps/ang/maxtheta 0 deg
+#
+/testhadr/run/setBatchSummaryEnable true
+/testhadr/run/setBatchSummaryFile edep-70um.csv
+/testhadr/batch/setRotateRootPerRun true
+/testhadr/batch/setRootFileBase bare-detector-batch
+/run/printProgress 100000
+#
+# ---- Batch 00 ----
+/testhadr/run/setBatchTag 00
+/random/setSeeds 545734850 455654154
+/run/beamOn 500000
+#
+# ---- Batch 01 ----
+/testhadr/run/setBatchTag 01
+/random/setSeeds 545734851 455654137
+/run/beamOn 500000
+#
+# ---- Batch 02 ----
+/testhadr/run/setBatchTag 02
+/random/setSeeds 545734852 455654120
+/run/beamOn 500000
+#
+# ---- Batch 03 ----
+/testhadr/run/setBatchTag 03
+/random/setSeeds 545734853 455654103
+/run/beamOn 500000
+#
+# ---- Batch 04 ----
+/testhadr/run/setBatchTag 04
+/random/setSeeds 545734854 455654086
+/run/beamOn 500000
+#
+# ---- Batch 05 ----
+/testhadr/run/setBatchTag 05
+/random/setSeeds 545734855 455654069
+/run/beamOn 500000
+#
+# ---- Batch 06 ----
+/testhadr/run/setBatchTag 06
+/random/setSeeds 545734856 455654052
+/run/beamOn 500000
+#
+# ---- Batch 07 ----
+/testhadr/run/setBatchTag 07
+/random/setSeeds 545734857 455654035
+/run/beamOn 500000
+#
+# ---- Batch 08 ----
+/testhadr/run/setBatchTag 08
+/random/setSeeds 545734858 455654018
+/run/beamOn 500000
+#
+# ---- Batch 09 ----
+/testhadr/run/setBatchTag 09
+/random/setSeeds 545734859 455654001
+/run/beamOn 500000

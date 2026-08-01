@@ -71,7 +71,7 @@ inline G4int DepthHistoId(G4int absIdx, G4int processCat) {
 
 // ---------------------------------------------------------------------------
 // Per-particle Edep per absorber: kEdepByParticleBase + (a-1)*kNbFixedParticles + p
-const G4int kNbFixedParticles = 7;  // alpha, Li7, Li6, proton, gamma, e-, C12
+const G4int kNbFixedParticles = 7;  // alpha, Li7, Li6, proton, gamma, e-, carbon
 const G4int kEdepByParticleBase = kDepthHistoEnd;
 
 inline G4int EdepByParticleId(G4int absIdx, G4int partIdx) {
@@ -359,8 +359,25 @@ inline G4int EionDepthId(G4int a)        { return kEionDepthBase     + a - 1; }
 inline G4int EionNormDepthId(G4int a)    { return kEionNormDepthBase + a - 1; }
 inline G4int TrackContainmentId(G4int a) { return kTrackContainBase  + a - 1; }
 
+// Primary-only LET families (ParentID == 0, charged depositing tracks). Appended
+// after the combined category/event families so every existing LET H1 ID is
+// preserved. Per-absorber slot: base + (a-1).
+const G4int kPrimaryLetStepCountBase     = kTrackContainBase + kMaxAbsor;
+const G4int kPrimaryLetStepEWeightedBase = kPrimaryLetStepCountBase     + kMaxAbsor;
+const G4int kPrimaryLetCalcEWeightedBase = kPrimaryLetStepEWeightedBase + kMaxAbsor;
+const G4int kPrimaryTrackEionBase        = kPrimaryLetCalcEWeightedBase + kMaxAbsor;
+const G4int kPrimaryTrackLetBase         = kPrimaryTrackEionBase        + kMaxAbsor;
+const G4int kPrimaryTrackDepthSpanBase   = kPrimaryTrackLetBase         + kMaxAbsor;
+
+inline G4int PrimaryLetStepCountId(G4int a)     { return kPrimaryLetStepCountBase     + a - 1; }
+inline G4int PrimaryLetStepEWeightedId(G4int a) { return kPrimaryLetStepEWeightedBase + a - 1; }
+inline G4int PrimaryLetCalcEWeightedId(G4int a) { return kPrimaryLetCalcEWeightedBase + a - 1; }
+inline G4int PrimaryTrackEionId(G4int a)        { return kPrimaryTrackEionBase        + a - 1; }
+inline G4int PrimaryTrackLetId(G4int a)         { return kPrimaryTrackLetBase         + a - 1; }
+inline G4int PrimaryTrackDepthSpanId(G4int a)   { return kPrimaryTrackDepthSpanBase   + a - 1; }
+
 // Upper bound of the LET H1 ID space (one past the last LET H1 ID).
-const G4int kMaxHistoLet = kTrackContainBase + kMaxAbsor;
+const G4int kMaxHistoLet = kPrimaryTrackDepthSpanBase + kMaxAbsor;
 
 // ---------------------------------------------------------------------------
 // LET H2 histogram IDs (independent H2 ID space, starting at 0). Per-absorber
@@ -442,6 +459,8 @@ inline G4int SecCreatorCategory(const G4String& procName) {
 // Map a Geant4 particle name to a fixed-particle index.
 // Returns -1 if the particle is not in the tracked list.
 // Strips ion excitation suffix (e.g. "Li7[478.0]" -> "Li7") before matching.
+// Slot 6 ("carbon") matches every carbon isotope name Geant4 emits
+// (C12, C13, C14, ...), including excited-state suffixes after stripping.
 inline G4int FixedParticleIdx(const G4String& name) {
     G4String stripped = name.substr(0, name.find('['));
     if (stripped == "alpha")  return 0;
@@ -450,13 +469,18 @@ inline G4int FixedParticleIdx(const G4String& name) {
     if (stripped == "proton") return 3;
     if (stripped == "gamma")  return 4;
     if (stripped == "e-")     return 5;
-    if (stripped == "C12")   return 6;
+    // Carbon isotopes: "C" followed by one or more digits (C12, C13, ...).
+    if (stripped.size() >= 2 && stripped[0] == 'C'
+        && stripped.find_first_not_of("0123456789", 1) == G4String::npos)
+    {
+        return 6;
+    }
     return -1;
 }
 
 inline const G4String& FixedParticleName(G4int idx) {
     static const G4String names[kNbFixedParticles] =
-        {"alpha", "Li7", "Li6", "proton", "gamma", "e-", "C12"};
+        {"alpha", "Li7", "Li6", "proton", "gamma", "e-", "carbon"};
     return names[idx];
 }
 

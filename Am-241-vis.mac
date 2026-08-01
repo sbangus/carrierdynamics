@@ -76,4 +76,28 @@
 /gps/ang/maxtheta 0 deg
 #
 /run/printProgress 100000
-/run/beamOn 72027
+
+/vis/open
+/vis/viewer/set/autoRefresh false
+/vis/verbose errors
+/vis/drawVolume
+/vis/geometry/set/visibility World 0 false
+/vis/geometry/set/visibility world 0 false
+/vis/geometry/set/visibility Cs137Source 0 true
+/vis/geometry/set/colour Cs137Source 0 yellow
+/vis/viewer/set/style wireframe
+/vis/viewer/set/viewpointThetaPhi 65 35 deg
+/vis/viewer/zoom 2.0
+/vis/scene/add/axes 0 0 0 20 mm
+/vis/scene/add/trajectories smooth
+/vis/modeling/trajectories/create/drawByParticleID
+/vis/modeling/trajectories/drawByParticleID-0/set neutron cyan
+/vis/modeling/trajectories/drawByParticleID-0/set proton red
+/vis/modeling/trajectories/drawByParticleID-0/set gamma yellow
+/vis/modeling/trajectories/drawByParticleID-0/set e- green
+/vis/modeling/trajectories/drawByParticleID-0/set e+ magenta
+/vis/modeling/trajectories/drawByParticleID-0/set alpha orange
+/tracking/storeTrajectory 1
+/vis/scene/endOfEventAction accumulate
+/vis/viewer/set/autoRefresh true
+/vis/verbose warnings

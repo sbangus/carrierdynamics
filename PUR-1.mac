@@ -1,0 +1,54 @@
+# PUR-1 pool geometry and prompt U-235 fission source.
+#
+# Global Z layout:
+#   homogenized source (-Z face at +312.5 mm)
+#   -> 300 mm pool water
+#   -> aluminum box (+Z face at +12.5 mm)
+#   -> air cavity and detector
+#   -> at least 500 mm pool water behind the box.
+#
+# The water world is intentional.  It represents pool water continuously
+# around the source and detector and avoids artificial lateral leakage from a
+# finite one-direction moderator slab.  The 1.2 m world leaves 587.5 mm of
+# water from the box -Z face to the downstream world boundary.
+
+/control/verbose 1
+/run/verbose 1
+
+/testhadr/det/setNbOfLayers 1
+/testhadr/det/setNbOfAbsor 4
+/testhadr/det/setAbsor 1 G4_Ag        40 nm
+/testhadr/det/setAbsor 2 PNDI-T10     75 um
+/testhadr/det/setAbsor 3 ITO         100 nm
+/testhadr/det/setAbsor 4 QuartzGlass 100 um
+/testhadr/det/setSizeY 40 mm
+/testhadr/det/setSizeZ 80 mm
+
+/testhadr/det/setBoxExternal 103 53 25 mm
+/testhadr/det/setBoxWallThickness 1.8 mm
+/testhadr/det/setDetectorStandoff 10 mm
+/testhadr/det/setBoxMaterial G4_Al
+/testhadr/det/setCavityMaterial G4_AIR
+/testhadr/det/setWorldMaterial G4_WATER
+/testhadr/det/setLabSize 1200 1200 1200 mm
+
+# The GPS source center is 400 mm beyond the box +Z face.
+/testhadr/det/setSourceStandoff 400 mm
+/testhadr/det/setModeratorEnable false
+/testhadr/det/setEncasementEnable false
+/testhadr/det/setBackSlabEnable false
+
+/run/initialize
+/analysis/setFileName PUR-1
+
+/control/execute PUR-1-source.mac
+
+# Detector-face spectra retained in the ROOT output:
+#   H1 381: all neutrons (primary + environmentally scattered/secondary)
+#   H1 382: primary neutrons only
+#   H1 383: all gammas (environment-generated for this neutron-only source)
+# Secondary birth-KE spectra retained in the ROOT output:
+#   H1 345-351: all generations; H1 374-380: first generation only
+#   particle order: alpha, Li7, Li6, proton, gamma, e-, carbon
+/run/printProgress 1000000
+/run/beamOn 20000000

@@ -108,6 +108,11 @@ set(Hadr05_SCRIPTS
     DT-generator-moderated-batch-noPb.mac
     bare-detector-vis.mac
     bare-detector.mac
+    bare-detector-batched.mac
+    PUR-1-source.mac
+    PUR-1-vis.mac
+    PUR-1.mac
+    Am-241-vis.mac
   )
 
 foreach(_script ${Hadr05_SCRIPTS})

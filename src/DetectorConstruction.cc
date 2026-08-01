@@ -277,7 +277,7 @@ void DetectorConstruction::DefineMaterials()
   //   S: 0.9*2  + 0.1*1  = 1.9
   G4double totalMassPNDI = 61.6 * 12.011 + 87.8 * 1.008 + 2.0 * 14.007
                          + 4.0 * 15.999 + 1.9 * 32.065;
-  G4Material* PNDI = new G4Material("PNDI-T10", density = 1.5 * g / cm3, ncomponents = 5);
+  G4Material* PNDI = new G4Material("PNDI-T10", density = 1.67 * g / cm3, ncomponents = 5);
   PNDI->AddElement(C, 61.6 * 12.011 / totalMassPNDI);
   // Documented proxy: PNDI-T10 has no dedicated S(alpha,beta) library, so we
   // wire its hydrogen as TS_H_of_Polyethylene. This is justified because both
@@ -294,7 +294,7 @@ void DetectorConstruction::DefineMaterials()
   // mass fractions: PNDI = 100/110, B4C = 10/110
   G4double fPNDI = 100. / 110.;
   G4double fB4C = 10. / 110.;
-  G4double densityBlend = 1. / (fPNDI / 1.5 + fB4C / 2.52) * g / cm3;
+  G4double densityBlend = 1. / (fPNDI / 1.67 + fB4C / 2.52) * g / cm3;
   G4Material* PNDI_B4C =
     new G4Material("PNDI-T10-B4C", densityBlend, ncomponents = 2);
   PNDI_B4C->AddMaterial(PNDI, fPNDI);

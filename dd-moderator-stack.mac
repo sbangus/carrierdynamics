@@ -20,19 +20,19 @@
 /testhadr/det/setAbsor 2 PNDI-T10-B4C     30 um
 /testhadr/det/setAbsor 3 ITO         100 nm
 /testhadr/det/setAbsor 4 QuartzGlass 100 um
-/testhadr/det/setSizeY 8 mm
-/testhadr/det/setSizeZ 11 mm
+/testhadr/det/setSizeY 50 mm
+/testhadr/det/setSizeZ 80 mm
 #
 /testhadr/det/setBoxExternal 103 53 25 mm
 /testhadr/det/setBoxWallThickness 1.8 mm
 /testhadr/det/setDetectorStandoff 10 mm
 /testhadr/det/setBoxMaterial G4_Al
 /testhadr/det/setCavityMaterial G4_AIR
-/testhadr/det/setWorldMaterial G4_AIR
+/testhadr/det/setWorldMaterial polyethylene
 /testhadr/det/setLabSize 2000 2000 2000 mm
 #
 /testhadr/det/setNbOfModeratorLayers 3
-/testhadr/det/setModeratorLayer 1 G4_Pb 0.01 mm
+/testhadr/det/setModeratorLayer 1 G4_Pb 3 mm
 /testhadr/det/setModeratorLayer 2 HeavyWater 95 mm
 /testhadr/det/setModeratorLayer 3 polyethylene 75 mm
 /testhadr/det/setModeratorGap 10 mm

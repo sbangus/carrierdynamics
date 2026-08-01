@@ -29,7 +29,7 @@
 /testhadr/det/setDetectorStandoff 10 mm
 /testhadr/det/setBoxMaterial G4_Al
 /testhadr/det/setCavityMaterial G4_AIR
-/testhadr/det/setWorldMaterial G4_AIR
+/testhadr/det/setWorldMaterial polyethylene
 /testhadr/det/setLabSize 5000 5000 5000 mm
 #
 /testhadr/det/setNbOfModeratorLayers 3
@@ -79,7 +79,6 @@
 /vis/viewer/set/style wireframe
 /vis/viewer/set/viewpointThetaPhi 65 35 deg
 /vis/viewer/zoom 2.0
-/vis/scene/add/axes 0 0 0 20 mm
 /vis/scene/add/trajectories smooth
 /vis/modeling/trajectories/create/drawByParticleID
 /vis/modeling/trajectories/drawByParticleID-0/set neutron cyan
