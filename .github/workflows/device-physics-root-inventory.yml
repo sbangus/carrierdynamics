@@ -1,4 +1,4 @@
-name: Device physics ROOT inventory
+name: Device physics ROOT analysis
 
 on:
   pull_request:
@@ -6,6 +6,7 @@ on:
       - main
     paths:
       - analysis/inventory_root_outputs.py
+      - analysis/generate_device_physics_figures.py
       - .github/workflows/device-physics-root-inventory.yml
   workflow_dispatch:
 
@@ -23,7 +24,7 @@ env:
     build/bare-detector-thermal-only.root
 
 jobs:
-  inventory:
+  analyze:
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:
@@ -51,15 +52,28 @@ jobs:
           python-version: '3.12'
 
       - name: Install analysis dependencies
-        run: python -m pip install --upgrade pip numpy uproot awkward
+        run: python -m pip install --upgrade pip numpy pandas matplotlib uproot awkward
 
       - name: Inventory ROOT objects
         run: python analysis/inventory_root_outputs.py
+
+      - name: Generate thesis figures
+        run: python analysis/generate_device_physics_figures.py
 
       - name: Upload inventory
         uses: actions/upload-artifact@v4
         with:
           name: device-physics-root-inventory
           path: root_inventory/
+          if-no-files-found: error
+          retention-days: 7
+
+      - name: Upload thesis figure package
+        uses: actions/upload-artifact@v4
+        with:
+          name: device-physics-thesis-figures
+          path: |
+            device_physics_figures/
+            device_physics_thesis_figure_package.zip
           if-no-files-found: error
           retention-days: 7
