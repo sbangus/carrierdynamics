@@ -12,21 +12,38 @@ on:
 permissions:
   contents: read
 
+env:
+  ROOT_FILES: >-
+    build/bare-detector-2_2MeV-gamma.root,
+    build/bare-detector-662keV-gamma.root,
+    build/bare-detector-DD-neutron.root,
+    build/bare-detector-DT-neutron.root,
+    build/bare-detector-thermal-fast-noB4C.root,
+    build/bare-detector-thermal-fast-withB4C.root,
+    build/bare-detector-thermal-only.root
+
 jobs:
   inventory:
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:
-      - name: Check out repository and LFS files
+      - name: Check out repository without LFS payloads
         uses: actions/checkout@v4
         with:
-          lfs: true
+          lfs: false
           fetch-depth: 1
 
-      - name: Verify LFS downloads
+      - name: Download only requested ROOT files
         run: |
-          git lfs pull
-          ls -lh build/bare-detector-*.root
+          git lfs install --local
+          git lfs pull --include="${ROOT_FILES//, /,}" --exclude=""
+          ls -lh build/bare-detector-2_2MeV-gamma.root \
+                 build/bare-detector-662keV-gamma.root \
+                 build/bare-detector-DD-neutron.root \
+                 build/bare-detector-DT-neutron.root \
+                 build/bare-detector-thermal-fast-noB4C.root \
+                 build/bare-detector-thermal-fast-withB4C.root \
+                 build/bare-detector-thermal-only.root
 
       - name: Set up Python
         uses: actions/setup-python@v5
