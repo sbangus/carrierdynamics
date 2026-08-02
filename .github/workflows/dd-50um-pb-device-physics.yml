@@ -6,6 +6,7 @@ on:
       - main
     paths:
       - analysis/generate_dd_50um_pb_figures.py
+      - analysis/run_dd_50um_pb_figures.py
       - .github/workflows/dd-50um-pb-device-physics.yml
   workflow_dispatch:
 
@@ -38,7 +39,7 @@ jobs:
         run: python -m pip install --upgrade pip numpy pandas matplotlib uproot awkward
 
       - name: Generate figures
-        run: python analysis/generate_dd_50um_pb_figures.py
+        run: python analysis/run_dd_50um_pb_figures.py
 
       - name: Upload figure package
         uses: actions/upload-artifact@v4
