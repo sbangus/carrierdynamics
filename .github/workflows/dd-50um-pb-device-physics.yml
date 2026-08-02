@@ -1,0 +1,52 @@
+name: DD 50 um Pb device physics figures
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - analysis/generate_dd_50um_pb_figures.py
+      - analysis/run_dd_50um_pb_figures.py
+      - .github/workflows/dd-50um-pb-device-physics.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Check out repository without LFS payloads
+        uses: actions/checkout@v4
+        with:
+          lfs: false
+          fetch-depth: 1
+
+      - name: Fetch requested ROOT files through Git LFS
+        run: |
+          git lfs install --local
+          git lfs pull --include="build/DD-50um-noPb.root,build/DD-50um-Pb.root" --exclude=""
+          ls -lh build/DD-50um-noPb.root build/DD-50um-Pb.root
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: python -m pip install --upgrade pip numpy pandas matplotlib uproot awkward
+
+      - name: Generate figures
+        run: python analysis/run_dd_50um_pb_figures.py
+
+      - name: Upload figure package
+        uses: actions/upload-artifact@v4
+        with:
+          name: dd-50um-pb-device-physics-figures
+          path: |
+            DD_50um_with_without_Pb_figure_package.zip
+            dd_50um_pb_figures/
+          if-no-files-found: error
+          retention-days: 7
